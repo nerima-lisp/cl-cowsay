@@ -25,3 +25,14 @@ registered. LIST-CHARACTERS names every built-in this library ships."))
                      (invalid-message-width condition))))
   (:documentation "Signaled when SAY is given a wrap WIDTH that is not a
 positive integer."))
+
+(define-condition stdin-too-large (cl-cowsay-error)
+  ((limit :initarg :limit :reader stdin-too-large-limit))
+  (:report (lambda (condition stream)
+             (format stream "Standard input exceeded ~D characters without reaching EOF; refusing to read further"
+                     (stdin-too-large-limit condition))))
+  (:documentation "Signaled when reading a message from standard input (no
+positional MESSAGE words given on the command line) sees more than
+STDIN-TOO-LARGE-LIMIT characters without reaching EOF, so an unbounded or
+accidental huge input source cannot grow memory without bound before any
+rendering happens."))

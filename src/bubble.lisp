@@ -3,8 +3,10 @@
 ;;;; Draws a plain ASCII box around already-wrapped message lines. Deliberately
 ;;;; a simple uniform rectangle -- top/bottom rules of "_"/"-" and a pair of
 ;;;; side characters that differ between speech and thought mode -- rather
-;;;; than a tapered speech-bubble shape, per PACKAGE_STANDARD.md's "keep it
-;;;; simple and correct" latitude.
+;;;; than a tapered speech-bubble shape: a taper needs per-line corner
+;;;; characters keyed off each line's position within the bubble, which would
+;;;; roughly double this file's logic for a cosmetic difference a terminal
+;;;; user is unlikely to notice.
 
 (in-package #:cl-cowsay)
 

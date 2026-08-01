@@ -4,12 +4,12 @@
 ;;;; placeholders, no nesting, no control flow -- rather than a general
 ;;;; templating engine. Every built-in character (src/characters.lisp) is a
 ;;;; list of plain strings that may contain ${eyes}, ${tongue}, and/or
-;;;; ${thoughts}; %FILL-TEMPLATE-LINE replaces each with caller-supplied text.
+;;;; ${thoughts}; FILL-TEMPLATE-LINE replaces each with caller-supplied text.
 
 (in-package #:cl-cowsay)
 
 (defparameter *template-placeholders* '("${thoughts}" "${eyes}" "${tongue}")
-  "Every substitution point %FILL-TEMPLATE-LINE recognizes, most specific
+  "Every substitution point FILL-TEMPLATE-LINE recognizes, most specific
 first. Order does not matter for correctness here (the three placeholders
 cannot appear inside one another), but keeping it fixed makes the expansion
 order deterministic to read.")

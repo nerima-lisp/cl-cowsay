@@ -30,3 +30,16 @@
   (it "reports the offending width"
     (expect (search "0" (princ-to-string (make-condition 'invalid-message :width 0)))
             :to-be-truthy)))
+
+(describe "stdin-too-large"
+  (it "is a cl-cowsay-error"
+    (expect (typep (make-condition 'stdin-too-large :limit 65536) 'cl-cowsay-error)
+            :to-be-truthy))
+
+  (it "exposes the configured limit via stdin-too-large-limit"
+    (expect (= (stdin-too-large-limit (make-condition 'stdin-too-large :limit 65536)) 65536)
+            :to-be-truthy))
+
+  (it "reports the limit"
+    (expect (search "65536" (princ-to-string (make-condition 'stdin-too-large :limit 65536)))
+            :to-be-truthy)))

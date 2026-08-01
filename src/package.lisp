@@ -20,7 +20,9 @@
    #:unknown-character
    #:unknown-character-name
    #:invalid-message
-   #:invalid-message-width))
+   #:invalid-message-width
+   #:stdin-too-large
+   #:stdin-too-large-limit))
 
 (defpackage #:cl-cowsay/cli
   (:documentation "The `cl-cowsay` command-line front end over CL-COWSAY.")
@@ -28,7 +30,9 @@
   (:import-from #:cl-cowsay
                 #:say
                 #:list-characters
-                #:cl-cowsay-error)
+                #:cl-cowsay-error
+                #:stdin-too-large
+                #:stdin-too-large-limit)
   (:import-from #:cl-cli
                 #:make-app
                 #:make-option

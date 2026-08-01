@@ -14,15 +14,30 @@ read by flake.nix and enforced by release.yml against the git tag."
   (let ((system (asdf:find-system "cl-cowsay" nil)))
     (if system (asdf:component-version system) "0.0.0")))
 
+(defparameter *max-stdin-message-length* (* 64 1024)
+  "Upper bound, in characters, on how much %READ-STDIN-MESSAGE will read from
+*STANDARD-INPUT* before signaling STDIN-TOO-LARGE. cl-cowsay is a cosmetic
+terminal toy, not a document processor, so this is generous rather than
+tight -- large enough that no legitimate piped message could hit it, small
+enough that an unbounded or accidental huge input source (`cat /dev/zero |
+cl-cowsay`) cannot grow memory without bound or hang before any rendering
+happens.")
+
 (defun %read-stdin-message ()
-  "Read all of *STANDARD-INPUT* into a string, with a trailing newline (the
-one a shell-supplied EOF typically leaves) removed so it does not become an
-extra blank wrapped line."
-  (let ((text (with-output-to-string (out)
-                (loop for line = (read-line *standard-input* nil nil)
-                      while line
-                      do (write-line line out)))))
-    (string-right-trim '(#\Newline) text)))
+  "Read at most *MAX-STDIN-MESSAGE-LENGTH* characters of *STANDARD-INPUT*
+into a string, with a trailing newline (the one a shell-supplied EOF
+typically leaves) removed so it does not become an extra blank wrapped line.
+Reads one character at a time rather than by line, because a source with no
+newline at all (e.g. /dev/zero) would otherwise let a single READ-LINE call
+grow without bound; signals STDIN-TOO-LARGE once the limit is reached
+instead of continuing to read."
+  (let ((buffer (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)))
+    (loop for char = (read-char *standard-input* nil nil)
+          while char
+          do (when (>= (fill-pointer buffer) *max-stdin-message-length*)
+               (error 'stdin-too-large :limit *max-stdin-message-length*))
+             (vector-push-extend char buffer))
+    (string-right-trim '(#\Newline) buffer)))
 
 (defun %message-from-invocation (invocation)
   "Return the message to render: the positional words joined by a single

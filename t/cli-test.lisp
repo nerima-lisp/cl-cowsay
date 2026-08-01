@@ -62,6 +62,24 @@
                       (run-app (make-cowsay-app) :argv '("cl-cowsay") :stdout out)))))
       (expect (search "piped in" output) :to-be-truthy)))
 
+  (it "signals a bounded error instead of reading unbounded standard input"
+    ;; A single newline-free run longer than the internal cap: the scenario a
+    ;; naive line-based reader would read forever (e.g. `cat /dev/zero |
+    ;; cl-cowsay`), tested here with a bounded fake stream instead of an
+    ;; actually-huge or infinite one. run-app (cl-cli) catches any signaled
+    ;; ERROR from the handler and reports exit code 70 (EX_SOFTWARE).
+    (let* ((huge (make-string (1+ cl-cowsay/cli::*max-stdin-message-length*)
+                              :initial-element #\a))
+           (stdout (make-string-output-stream))
+           (stderr (make-string-output-stream))
+           (code (with-input-from-string (*standard-input* huge)
+                   (run-app (make-cowsay-app) :argv '("cl-cowsay")
+                                              :stdout stdout :stderr stderr))))
+      (with-soft-assertions
+        (expect (= code 70) :to-be-truthy)
+        (expect (zerop (length (get-output-stream-string stdout))) :to-be-truthy)
+        (expect (search "exceeded" (get-output-stream-string stderr)) :to-be-truthy))))
+
   (it "draws a \":\"-sided bubble when --think is given"
     (let ((output (with-output-to-string (out)
                     (run-app (make-cowsay-app) :argv '("cl-cowsay" "-T" "hi") :stdout out))))
