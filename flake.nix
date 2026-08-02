@@ -24,24 +24,35 @@
     };
 
     cl-weave = {
-      url = "github:nerima-lisp/cl-weave/v1.1.0";
+      url = "github:nerima-lisp/cl-weave/v1.1.4";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     # Display-width-aware word wrap and padding (cl-tty-kit:wrap-string,
     # cl-tty-kit:pad-string, cl-tty-kit:string-width), used by src/bubble.lisp
-    # and src/render.lisp. Pinned to v1.0.3: that tag already carries
-    # src/text-layout.lisp (see its history), so this does not depend on the
-    # in-progress, untagged v1.1.0 animation work happening in parallel.
+    # and src/render.lisp. v1.1.0 is now tagged; the animation work it adds
+    # (entity/sprite/tick-loop) is orthogonal to a one-shot renderer like this
+    # one, but the word-wrap/pad API this package actually uses is unchanged
+    # and covered by cl-tty-kit's own API stability guarantee.
     cl-tty-kit = {
-      url = "github:nerima-lisp/cl-tty-kit/v1.0.3";
+      url = "github:nerima-lisp/cl-tty-kit/v1.2.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     # Declarative CLI parsing plus --help/--version scaffolding, used by
-    # src/cli.lisp.
+    # src/cli.lisp -- including its DEFINE-APP macro, which is what
+    # *COWSAY-APP* is built with instead of nested MAKE-APP/MAKE-OPTION/
+    # MAKE-POSITIONAL calls.
     cl-cli = {
-      url = "github:nerima-lisp/cl-cli/v1.1.0";
+      url = "github:nerima-lisp/cl-cli/v1.2.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # Structural S-expression tooling for src/ and t/: a dev-shell binary for
+    # agent-driven refactors (paredit edit/refactor/query/fix) and a
+    # structural-parse lint gate reused in `checks.paredit-lint` below.
+    paredit-cli = {
+      url = "github:nerima-lisp/paredit-cli/v1.4.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -59,6 +70,7 @@
       cl-weave,
       cl-tty-kit,
       cl-cli,
+      paredit-cli,
       treefmt-nix,
     }:
     let
@@ -118,8 +130,12 @@
 
       # Drives BOTH `checks.default` and `apps.test`, from this one number, so
       # the command a contributor runs by hand and the gate CI runs cannot
-      # drift apart.
+      # drift apart. `killAfterSeconds` is cl-nix-forge's own default (30);
+      # spelled out rather than left implicit so a runaway test process is
+      # provably bounded by an escalating SIGTERM-then-SIGKILL, not by
+      # whatever timeout the enclosing CI job happens to have.
       timeoutSeconds = 120;
+      killAfterSeconds = 30;
 
       # The delivered `cl-cowsay` binary: `packages.default`, `apps.default`
       # and `apps.cl-cowsay`, all three built from the same `lispDerivation`
@@ -144,5 +160,57 @@
       # gate, so the formatter and CI can never disagree about what
       # "formatted" means.
       treefmt.evalModule = treefmt-nix.lib.evalModule;
+
+      # The interactive-only extras: `self.formatter` is the same treefmt
+      # evaluation `checks.formatting` uses, so formatting in the shell
+      # cannot disagree with the gate; the cl-weave CLI binary puts `cl-weave
+      # run` on PATH for ad-hoc filtered/watch runs the generated `apps.test`
+      # does not cover; and paredit-cli is the structure-editing tool
+      # PACKAGE_STANDARD.md and this repository's own refactors are done
+      # through, rather than by hand-editing parentheses.
+      devShellPackages = ctx: [
+        self.formatter.${ctx.system}
+        cl-weave.packages.${ctx.system}.default
+        paredit-cli.packages.${ctx.system}.default
+      ];
+
+      # Granularity lives here, not in extra GitHub Actions jobs: `nix flake
+      # check` evaluates each attribute as its own derivation, with build
+      # caching, so a check added here is exactly as parallel as the
+      # generated ones.
+      extraOutputs =
+        ctx:
+        let
+          # An sb-cover HTML report over the `cl-cowsay` system alone, so
+          # `cl-cowsay/test` itself never inflates the numbers. Spelled once,
+          # as a function of `ctx`, and used for both `packages.coverage` and
+          # `checks.coverage` below, so the two attributes are literally the
+          # same derivation rather than two calls that happen to agree (see
+          # cl-prolog's flake.nix, the pattern this follows). It asserts its
+          # own report is non-empty before installing it, so no separate
+          # `test -f cover-index.html` wrapper derivation is needed.
+          coverageReport = ctx.cl.mkCoverageReport {
+            drv = ctx.package;
+            name = "cl-cowsay-coverage";
+            systems = [ "cl-cowsay" ];
+            timeoutSeconds = 180;
+            killAfterSeconds = 30;
+          };
+        in
+        {
+          packages.coverage = coverageReport;
+
+          checks = {
+            coverage = coverageReport;
+
+            # Structural parse gate over every Lisp source in the filtered
+            # tree: fails if any .lisp/.asd file this build actually ships
+            # is not a balanced S-expression document.
+            paredit-lint = paredit-cli.lib.${ctx.system}.mkLintCheck {
+              inherit (ctx) src;
+              name = "cl-cowsay-paredit-lint";
+            };
+          };
+        };
     };
 }
