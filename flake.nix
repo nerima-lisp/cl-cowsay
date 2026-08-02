@@ -24,7 +24,7 @@
     };
 
     cl-weave = {
-      url = "github:nerima-lisp/cl-weave/v1.1.4";
+      url = "github:nerima-lisp/cl-weave/v1.2.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -35,7 +35,7 @@
     # one, but the word-wrap/pad API this package actually uses is unchanged
     # and covered by cl-tty-kit's own API stability guarantee.
     cl-tty-kit = {
-      url = "github:nerima-lisp/cl-tty-kit/v1.2.0";
+      url = "github:nerima-lisp/cl-tty-kit/v1.3.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -44,7 +44,7 @@
     # *COWSAY-APP* is built with instead of nested MAKE-APP/MAKE-OPTION/
     # MAKE-POSITIONAL calls.
     cl-cli = {
-      url = "github:nerima-lisp/cl-cli/v1.2.0";
+      url = "github:nerima-lisp/cl-cli/v1.3.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
