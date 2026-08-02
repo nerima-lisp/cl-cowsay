@@ -18,6 +18,22 @@
         (expect (search "nope" text) :to-be-truthy)
         (expect (search "cow" text) :to-be-truthy)))))
 
+(describe "unknown-eyes-preset"
+  (it "is a cl-cowsay-error"
+    (expect (typep (make-condition 'unknown-eyes-preset :name "nope") 'cl-cowsay-error)
+            :to-be-truthy))
+
+  (it "exposes the offending name via unknown-eyes-preset-name"
+    (expect (string= (unknown-eyes-preset-name (make-condition 'unknown-eyes-preset :name "nope"))
+                     "nope")
+            :to-be-truthy))
+
+  (it "reports the offending name and the list of known presets"
+    (let ((text (princ-to-string (make-condition 'unknown-eyes-preset :name "nope"))))
+      (with-soft-assertions
+        (expect (search "nope" text) :to-be-truthy)
+        (expect (search "borg" text) :to-be-truthy)))))
+
 (describe "invalid-message"
   (it "is a cl-cowsay-error"
     (expect (typep (make-condition 'invalid-message :width 0) 'cl-cowsay-error)

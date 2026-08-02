@@ -2,32 +2,36 @@
 ;;;;
 ;;;; A deliberately tiny string-substitution scheme -- three fixed
 ;;;; placeholders, no nesting, no control flow -- rather than a general
-;;;; templating engine. Every built-in character (src/characters.lisp) is a
-;;;; list of plain strings that may contain ${eyes}, ${tongue}, and/or
+;;;; templating engine. Every built-in character (src/characters-data.lisp)
+;;;; is a list of plain strings that may contain ${eyes}, ${tongue}, and/or
 ;;;; ${thoughts}; FILL-TEMPLATE-LINE replaces each with caller-supplied text.
 
 (in-package #:cl-cowsay)
 
-(defparameter *template-placeholders* '("${thoughts}" "${eyes}" "${tongue}")
-  "Every substitution point FILL-TEMPLATE-LINE recognizes, most specific
-first. Order does not matter for correctness here (the three placeholders
-cannot appear inside one another), but keeping it fixed makes the expansion
-order deterministic to read.")
-
 (defun %replace-all (string old new)
   "Return STRING with every non-overlapping occurrence of OLD replaced by NEW.
 OLD must be non-empty; an empty OLD would match at every position and never
-advance, looping forever, so this returns STRING unchanged instead."
+advance, looping forever, so this returns STRING unchanged instead.
+
+Written in continuation-passing style: %SCAN-CPS walks STRING left to right,
+and at each match builds a continuation for \"how to finish the result once
+the tail after this match is known\" instead of writing into a shared
+accumulator. The base case (no further match) hands the remaining tail to
+that whole chain of closures, which then composes the final string outward
+from the last match to the first."
   (if (zerop (length old))
       string
-      (with-output-to-string (out)
-        (loop with start = 0
-              for position = (search old string :start2 start)
-              while position
-              do (write-string string out :start start :end position)
-                 (write-string new out)
-                 (setf start (+ position (length old)))
-              finally (write-string string out :start start)))))
+      (labels ((%scan-cps (start k)
+                 (let ((position (search old string :start2 start)))
+                   (if position
+                       (%scan-cps (+ position (length old))
+                                  (lambda (tail)
+                                    (funcall k (concatenate 'string
+                                                             (subseq string start position)
+                                                             new
+                                                             tail))))
+                       (funcall k (subseq string start))))))
+        (%scan-cps 0 #'identity))))
 
 (defun fill-template-line (line &key (eyes "") (tongue "") (thoughts ""))
   "Return LINE with ${eyes}, ${tongue}, and ${thoughts} replaced by EYES,

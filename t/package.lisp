@@ -5,17 +5,22 @@
   (:shadowing-import-from #:cl-weave #:describe)
   (:import-from #:cl-weave
    ;; Registration and assertions
-   #:it #:expect #:signals #:run-all
+   #:it #:it-each #:expect #:signals #:run-all
    ;; Soft (all-failures-collected) assertions
-   #:with-soft-assertions)
+   #:with-soft-assertions
+   ;; Mocks and spies
+   #:with-mocked-functions)
   (:import-from #:cl-cowsay/cli
-   #:make-cowsay-app)
+   #:*cowsay-app*
+   #:main
+   #:image-entry-point)
   (:import-from #:cl-cli
    #:parse-argv
    #:run-app
    #:option-value
    #:positional-value
-   #:cli-invalid-option-value)
+   #:cli-invalid-option-value
+   #:current-process-argv)
   (:export #:run-tests))
 
 (in-package #:cl-cowsay/test)

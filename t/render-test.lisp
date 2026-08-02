@@ -3,6 +3,26 @@
 (in-package #:cl-cowsay/test)
 
 (describe "say"
+  ;; A snapshot, not piecemeal SEARCH/FIND assertions, is what actually
+  ;; guards the bubble's exact layout -- box width, connector placement,
+  ;; and the character art's alignment all move together on any change to
+  ;; BUBBLE-LINES, FILL-TEMPLATE-LINE, or the "cow" character data, and a
+  ;; partial match would miss a regression in any of the whitespace
+  ;; between them. :TO-MATCH-INLINE-SNAPSHOT compares against
+  ;; (WRITE-TO-STRING ACTUAL :ESCAPE T :READABLY NIL), so the literal below
+  ;; is SAY's return value re-printed with escaping -- quote marks and each
+  ;; backslash doubled -- not the raw rendered text.
+  (it "renders \"hi\" with the default cow character exactly"
+    (expect (say "hi")
+            :to-match-inline-snapshot
+            "\" ____
+| hi |
+ ----
+        \\\\   ^__^
+         \\\\  (oo)
+            (__)
+             u  u\""))
+
   (it "renders every built-in character without error"
     (expect (every (lambda (name) (stringp (say "hello" :character name)))
                    (list-characters))
@@ -16,14 +36,13 @@
             :to-be-truthy))
 
   (it "signals unknown-character for an unregistered character"
-    (expect (signals (say "hi" :character "not-a-real-character") 'unknown-character)
-            :to-be-truthy))
+    (signals unknown-character (say "hi" :character "not-a-real-character")))
 
   (it "signals invalid-message for a non-positive width"
-    (expect (signals (say "hi" :width 0) 'invalid-message) :to-be-truthy))
+    (signals invalid-message (say "hi" :width 0)))
 
   (it "signals invalid-message for a non-integer width"
-    (expect (signals (say "hi" :width 3.5) 'invalid-message) :to-be-truthy))
+    (signals invalid-message (say "hi" :width 3.5)))
 
   (it "renders an empty message without error"
     (expect (stringp (say "")) :to-be-truthy))
@@ -62,4 +81,21 @@
   (it "draws a \"|\"-sided bubble in :speech mode and a \":\"-sided one in :thought mode"
     (with-soft-assertions
       (expect (find #\| (say "hi" :mode :speech)) :to-be-truthy)
-      (expect (find #\: (say "hi" :mode :thought)) :to-be-truthy))))
+      (expect (find #\: (say "hi" :mode :thought)) :to-be-truthy)))
+
+  (it "keeps a message on a single bubble line when :no-wrap is true, even past width"
+    ;; Exactly one content row means exactly two "|" characters in the whole
+    ;; rendering (the row's left and right sides) -- a wrapped message would
+    ;; produce more than one content row and so more than two.
+    (let* ((long (make-string 60 :initial-element #\a))
+           (result (say long :no-wrap t :width 10)))
+      (expect (= (count #\| result) 2) :to-be-truthy)))
+
+  (it "still honors embedded newlines as forced breaks when :no-wrap is true"
+    (let ((result (say (format nil "line one~%line two") :no-wrap t)))
+      (with-soft-assertions
+        (expect (search "line one" result) :to-be-truthy)
+        (expect (search "line two" result) :to-be-truthy))))
+
+  (it "renders an empty message without error when :no-wrap is true"
+    (expect (stringp (say "" :no-wrap t)) :to-be-truthy)))

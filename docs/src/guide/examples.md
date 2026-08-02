@@ -1,0 +1,141 @@
+# Examples
+
+A cookbook of `cl-cowsay` usage, from the command line and as a library.
+See the [CLI reference](../reference/cli.md) for every flag and the
+[API reference](../reference/api.md) for the full `cl-cowsay:say` signature.
+
+## Speech vs. thought bubbles
+
+```sh
+cl-cowsay "hi"
+```
+
+```text
+ ____
+| hi |
+ ----
+        \   ^__^
+         \  (oo)
+            (__)
+             u  u
+```
+
+```sh
+cl-cowsay --think -c robot "Beep boop."
+```
+
+```text
+ ____________
+: Beep boop. :
+ ------------
+          o    (_)
+         o  .-----.
+          o |oo |
+            '--|-|--'
+               |_|
+```
+
+Speech bubbles use `|` sides and a `\` connector; thought bubbles use `:`
+sides and an `o` connector, so the two are visually distinct even without
+reading the message itself.
+
+## Eyes presets
+
+`--eyes-preset`/`-E` is a shortcut for the classic `cowsay` eyes; an explicit
+`--eyes` always overrides it when both are given (see
+[`eyes-preset-string`](../reference/api.md#eyes-preset-string)).
+
+```sh
+cl-cowsay -E dead "Oh no"
+```
+
+```text
+ _______
+| Oh no |
+ -------
+        \   ^__^
+         \  (XX)
+            (__)
+             u  u
+```
+
+## Word-wrap vs. `--no-wrap`
+
+By default, `cl-cowsay` wraps the message to `--width` columns (40 by
+default):
+
+```sh
+cl-cowsay -w 10 "hello world"
+```
+
+```text
+ _______
+| hello |
+| world |
+ -------
+        \   ^__^
+         \  (oo)
+            (__)
+             u  u
+```
+
+`--no-wrap`/`-n` disables that -- the message stays on one line regardless
+of `--width`, and only its own embedded newlines still break it:
+
+```sh
+cl-cowsay -w 10 -n "hello world"
+```
+
+```text
+ _____________
+| hello world |
+ -------------
+        \   ^__^
+         \  (oo)
+            (__)
+             u  u
+```
+
+## Picking a character
+
+```sh
+cl-cowsay -l                # list every built-in character name
+cl-cowsay -c dragon "Roar!" # pick one explicitly
+cl-cowsay -r "Surprise me!" # let cl-cowsay pick one at random
+```
+
+See the [character gallery](characters.md) for what all 29 look like.
+
+## Shell one-liners
+
+```sh
+# Pipe a message in from standard input.
+echo "piped in" | cl-cowsay
+
+# A cowsay-flavored git post-commit hook message.
+git log -1 --pretty=%s | cl-cowsay -c cat
+
+# Whatever fortune(6) has to say, from a random built-in character.
+fortune | cl-cowsay -r --think
+```
+
+## As a library
+
+```lisp
+(asdf:load-system "cl-cowsay")
+
+;; The basics: character, mode, eyes/tongue overrides, width.
+(cl-cowsay:say "Hello, nerima-lisp!")
+(cl-cowsay:say "Hmm..." :character "dragon" :mode :thought)
+(cl-cowsay:say "Encrypted" :eyes (cl-cowsay:eyes-preset-string "borg"))
+(cl-cowsay:say "kept on one line no matter how long" :no-wrap t)
+
+;; Handle every error this library signals with one clause.
+(handler-case (cl-cowsay:say "hi" :character "not-a-real-character")
+  (cl-cowsay:unknown-character (c)
+    (format t "no such character: ~A~%" (cl-cowsay:unknown-character-name c))))
+
+;; Enumerate what's available.
+(cl-cowsay:list-characters)   ; => ("alien" "bat" "bear" ... "wolf")
+(cl-cowsay:list-eye-presets)  ; => ("borg" "dead" "greedy" ...)
+```

@@ -1,11 +1,13 @@
 ;;;; src/characters.lisp
 ;;;;
-;;;; The built-in character registry. Each character is CHARACTER-LINES: a
-;;;; list of plain strings, top to bottom, that may reference the
-;;;; ${eyes}/${tongue}/${thoughts} placeholders FILL-TEMPLATE-LINE expands.
-;;;; Every character below is original ASCII art written for this project --
-;;;; none of it is copied from, or a rendering of, upstream cowsay's .cow
-;;;; files.
+;;;; Registry LOGIC only: CHARACTER-TEMPLATE, the *CHARACTERS* table, and the
+;;;; REGISTER-CHARACTER/LIST-CHARACTERS/CHARACTER-KNOWN-P/
+;;;; FIND-CHARACTER-TEMPLATE operations over it. Each registered character is
+;;;; CHARACTER-LINES: a list of plain strings, top to bottom, that may
+;;;; reference the ${eyes}/${tongue}/${thoughts} placeholders
+;;;; FILL-TEMPLATE-LINE expands. The DATA -- every built-in character, as a
+;;;; DEFCHARACTER form -- lives in src/characters-data.lisp, which depends on
+;;;; REGISTER-CHARACTER defined here.
 
 (in-package #:cl-cowsay)
 
@@ -41,41 +43,3 @@ simply be re-loaded during development."
 signal UNKNOWN-CHARACTER when there is none."
   (or (gethash (string-downcase name) *characters*)
       (error 'unknown-character :name name)))
-
-;;; --------------------------------------------------------------------------
-;;; Built-in characters
-;;; --------------------------------------------------------------------------
-
-;; The default. Ears, a two-character ${eyes} slot, a body that carries
-;; ${tongue} (empty by default), and two hoof legs.
-(register-character
- "cow"
- (list "        ${thoughts}   ^__^"
-       "         ${thoughts}  (${eyes})"
-       "            (__${tongue})"
-       "             u  u"))
-
-;; Whiskers, a ${eyes} slot between them, and a ${tongue} slot at the mouth.
-(register-character
- "cat"
- (list "       ${thoughts}   /\\_/\\"
-       "        ${thoughts}  (${eyes} )"
-       "              >${tongue}<"
-       "             /     \\"))
-
-;; A boxy head with an ${eyes}/${tongue} display panel and an antenna.
-(register-character
- "robot"
- (list "          ${thoughts}    (_)"
-       "         ${thoughts}  .-----."
-       "          ${thoughts} |${eyes} ${tongue}|"
-       "            '--|-|--'"
-       "               |_|"))
-
-;; A wavy-bottomed sheet with a face; ${tongue} shows as a small mouth mark.
-(register-character
- "ghost"
- (list "        ${thoughts}   .-\"\"-."
-       "         ${thoughts}  (${eyes}${tongue})"
-       "             )      ("
-       "            ^  ^  ^  ^"))

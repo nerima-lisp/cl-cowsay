@@ -15,10 +15,15 @@
    ;; Built-in characters
    #:list-characters
    #:character-known-p
+   ;; Eyes presets
+   #:list-eye-presets
+   #:eyes-preset-string
    ;; Conditions
    #:cl-cowsay-error
    #:unknown-character
    #:unknown-character-name
+   #:unknown-eyes-preset
+   #:unknown-eyes-preset-name
    #:invalid-message
    #:invalid-message-width
    #:stdin-too-large
@@ -30,19 +35,22 @@
   (:import-from #:cl-cowsay
                 #:say
                 #:list-characters
+                #:list-eye-presets
+                #:eyes-preset-string
                 #:cl-cowsay-error
                 #:stdin-too-large
                 #:stdin-too-large-limit)
   (:import-from #:cl-cli
-                #:make-app
-                #:make-option
-                #:make-positional
+                #:define-app
                 #:run-app
                 #:option-value
                 #:positional-value
                 #:invocation-stdout
                 #:current-process-argv)
+  (:import-from #:host-kit
+                #:quit
+                #:getcwd)
   (:export
-   #:make-cowsay-app
+   #:*cowsay-app*
    #:main
    #:image-entry-point))

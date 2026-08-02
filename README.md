@@ -5,11 +5,20 @@
 [![Documentation](https://img.shields.io/badge/docs-MkDocs%20Material-0a7a5a)](https://nerima-lisp.github.io/cl-cowsay/)
 
 A one-shot ASCII-art talking-animal message tool for SBCL: word-wrap a
-message into a speech or thought bubble above one of a small set of
-original, hand-written characters, print it, exit. Not a clone of the
-classic `cowsay`'s `.cow` Perl file format -- characters are plain Lisp data
-with a minimal `${eyes}`/`${tongue}`/`${thoughts}` substitution scheme, and
-none of the art is copied from upstream.
+message into a speech or thought bubble above one of **29 original,
+hand-written characters**, print it, exit. Not a clone of the classic
+`cowsay`'s `.cow` Perl file format -- characters are plain Lisp data with a
+minimal `${eyes}`/`${tongue}`/`${thoughts}` substitution scheme, and none of
+the art is copied from upstream.
+
+- 29 built-in characters (`cl-cowsay -l` to list them; see the
+  [character gallery](https://nerima-lisp.github.io/cl-cowsay/characters/))
+- Speech and thought bubbles, custom eyes/tongue overrides, and 8 classic
+  `cowsay`-style eyes presets (`-E borg`, `-E dead`, ...)
+- Adjustable wrap width, an opt-out `--no-wrap` mode, and a `--random`
+  character picker
+- A small library (`cl-cowsay:say`) behind the command line, usable on its
+  own from any SBCL program
 
 Full documentation is published at <https://nerima-lisp.github.io/cl-cowsay/>.
 The source for that site lives in [docs/src/](docs/src/).
@@ -51,6 +60,9 @@ than follow the default branch.
 ## Documentation
 
 - [Getting started](https://nerima-lisp.github.io/cl-cowsay/getting-started/)
+- [Character gallery](https://nerima-lisp.github.io/cl-cowsay/guide/characters/)
+- [Examples](https://nerima-lisp.github.io/cl-cowsay/guide/examples/)
+- [CLI reference](https://nerima-lisp.github.io/cl-cowsay/reference/cli/)
 - [API reference](https://nerima-lisp.github.io/cl-cowsay/reference/api/)
 
 ## Development

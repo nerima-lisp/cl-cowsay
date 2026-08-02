@@ -19,7 +19,7 @@
     # follows that repository's default branch and would change this build
     # without warning.
     cl-nix-forge = {
-      url = "github:nerima-lisp/cl-nix-forge/v0.4.0";
+      url = "github:nerima-lisp/cl-nix-forge/v0.4.1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -57,10 +57,14 @@
     # Declarative CLI parsing plus --help/--version scaffolding, used by
     # src/cli.lisp -- including its DEFINE-APP macro, which is what
     # *COWSAY-APP* is built with instead of nested MAKE-APP/MAKE-OPTION/
-    # MAKE-POSITIONAL calls.
+    # MAKE-POSITIONAL calls. cl-cli.asd itself `:depends-on`s cl-host-kit
+    # (below), so its OWN cl-host-kit input follows this build's rather than
+    # bringing in a second, separately pinned copy -- the same "mandatory
+    # `nixpkgs.follows`" reasoning above, applied to a second shared input.
     cl-cli = {
       url = "github:nerima-lisp/cl-cli/v1.3.0";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.cl-host-kit.follows = "cl-host-kit";
     };
 
     # Structural S-expression tooling for src/ and t/: a dev-shell binary for
@@ -69,6 +73,21 @@
     paredit-cli = {
       url = "github:nerima-lisp/paredit-cli/v1.4.0";
       inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # QUIT and GETCWD for src/cli.lisp's IMAGE-ENTRY-POINT -- SBCL-native
+    # replacements for the two UIOP calls it used to make. cl-cowsay is
+    # SBCL-only already (see :build-operation in cl-cowsay.asd), so UIOP's
+    # cross-implementation portability buys it nothing there. `flake = false`
+    # like cl-codec-kit above and for the same reason: cl-cli already
+    # `:depends-on`s cl-host-kit as a SOURCE TREE built locally (see
+    # `lispDependencies`), and `inputs.cl-host-kit.follows` on the `cl-cli`
+    # input above only works if both inputs resolve the same way -- a built
+    # `packages.${system}` output here would give `installSource` two
+    # differently-shaped copies of the same system name.
+    cl-host-kit = {
+      url = "github:nerima-lisp/cl-host-kit/v0.3.0";
+      flake = false;
     };
 
     treefmt-nix = {
@@ -86,6 +105,7 @@
       cl-tty-kit,
       cl-codec-kit,
       cl-cli,
+      cl-host-kit,
       paredit-cli,
       treefmt-nix,
     }:
@@ -149,16 +169,21 @@
       # `attribute 'ancestry' missing`; `fromDerivation` is cl-nix-forge's own
       # adapter for exactly that -- a package it did not build and about which
       # it can assume nothing. cl-regex-kit wraps cl-weave the same way.
-      lispDependencies =
-        ctx: [
-          (ctx.cl.fromDerivation { drv = cl-tty-kit.packages.${ctx.system}.cl-tty-kit; })
-          (ctx.cl.lispDerivation {
-            lispSystem = "cl-codec-kit";
-            version = ctx.cl.fromAsdSystem "${cl-codec-kit}/cl-codec-kit.asd";
-            src = cl-codec-kit;
-          })
-          cl-cli.packages.${ctx.system}.cl-cli
-        ];
+      lispDependencies = ctx: [
+        (ctx.cl.fromDerivation { drv = cl-tty-kit.packages.${ctx.system}.cl-tty-kit; })
+        (ctx.cl.lispDerivation {
+          lispSystem = "cl-codec-kit";
+          version = ctx.cl.fromAsdSystem "${cl-codec-kit}/cl-codec-kit.asd";
+          src = cl-codec-kit;
+        })
+        cl-cli.packages.${ctx.system}.cl-cli
+        (ctx.cl.lispDerivation {
+          pname = "cl-host-kit";
+          lispSystem = "cl-host-kit";
+          version = ctx.cl.fromAsdSystem "${cl-host-kit}/cl-host-kit.asd";
+          src = cl-host-kit;
+        })
+      ];
 
       # cl-weave is a dependency of `cl-cowsay/test` only (see cl-cowsay.asd),
       # so it is a CHECK dependency: it must not enter the library's closure.
@@ -204,11 +229,21 @@
       # does not cover; and paredit-cli is the structure-editing tool
       # PACKAGE_STANDARD.md and this repository's own refactors are done
       # through, rather than by hand-editing parentheses.
-      devShellPackages = ctx: [
-        self.formatter.${ctx.system}
-        cl-weave.packages.${ctx.system}.default
-        paredit-cli.packages.${ctx.system}.default
-      ];
+      #
+      # paredit-cli v1.4.0 declares only x86_64-linux -- "only what a gate
+      # verifies," by its own flake.nix, and aarch64-darwin carries no CI gate
+      # here either. `lib.optional` on a `?` membership test drops it from
+      # the aarch64-darwin dev shell instead of failing evaluation with
+      # `attribute 'aarch64-darwin' missing`, the same shape of gap
+      # cl-tty-kit's `:depends-on ("cl-codec-kit")` hit before it (see the
+      # `cl-codec-kit` input above).
+      devShellPackages =
+        ctx:
+        [
+          self.formatter.${ctx.system}
+          cl-weave.packages.${ctx.system}.default
+        ]
+        ++ lib.optional (paredit-cli.packages ? ${ctx.system}) paredit-cli.packages.${ctx.system}.default;
 
       # Granularity lives here, not in extra GitHub Actions jobs: `nix flake
       # check` evaluates each attribute as its own derivation, with build
@@ -225,6 +260,21 @@
           # cl-prolog's flake.nix, the pattern this follows). It asserts its
           # own report is non-empty before installing it, so no separate
           # `test -f cover-index.html` wrapper derivation is needed.
+          #
+          # Reads below 100% on package.lisp, characters-data.lisp, and part
+          # of cli.lisp are not a test gap: sb-cover attributes coverage to
+          # code *inside* a DEFUN body, and none of those three files' low
+          # numbers come from unexercised branches -- they come from
+          # top-level, run-once-at-load forms (DEFPACKAGE; each DEFCHARACTER
+          # registration; the DEFINE-APP declaration), which sb-cover does
+          # not instrument the same way. Restructuring any of the three into
+          # a function purely to move its coverage number would trade a
+          # correct declarative shape for a contrived one, for a number sb-
+          # cover was never designed to report on. cl-nix-forge's own
+          # `mkCoverageReport` deliberately has no minimum-coverage threshold
+          # and no option to add one (see lib/batteries/coverage.nix): "the
+          # report exists to make the number visible and trending, not to
+          # block merges on a threshold nobody has agreed to yet."
           coverageReport = ctx.cl.mkCoverageReport {
             drv = ctx.package;
             name = "cl-cowsay-coverage";
@@ -238,10 +288,13 @@
 
           checks = {
             coverage = coverageReport;
-
-            # Structural parse gate over every Lisp source in the filtered
-            # tree: fails if any .lisp/.asd file this build actually ships
-            # is not a balanced S-expression document.
+          }
+          # Structural parse gate over every Lisp source in the filtered
+          # tree: fails if any .lisp/.asd file this build actually ships is
+          # not a balanced S-expression document. Skipped on a system
+          # paredit-cli itself does not publish (see `devShellPackages`
+          # above) rather than failing `nix flake check` evaluation outright.
+          // lib.optionalAttrs (paredit-cli.lib ? ${ctx.system}) {
             paredit-lint = paredit-cli.lib.${ctx.system}.mkLintCheck {
               inherit (ctx) src;
               name = "cl-cowsay-paredit-lint";

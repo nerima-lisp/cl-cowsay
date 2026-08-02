@@ -48,61 +48,99 @@ standard input."
         (format nil "~{~A~^ ~}" words)
         (%read-stdin-message))))
 
-(defun %cowsay-handler (invocation)
-  (let ((message (%message-from-invocation invocation))
-        (character (option-value invocation :character))
-        (mode (if (option-value invocation :think) :thought :speech))
-        (eyes (option-value invocation :eyes))
-        (tongue (option-value invocation :tongue))
-        (width (option-value invocation :width)))
-    (write-string (say message :character character :mode mode
-                               :eyes eyes :tongue tongue :width width)
-                  (invocation-stdout invocation))
-    (terpri (invocation-stdout invocation)))
+(defun %pick-random-character ()
+  "Return a character name chosen uniformly at random from LIST-CHARACTERS.
+A tiny wrapper around CL:RANDOM purely so tests can assert on its result
+(true randomness itself is not something a spec can pin down)."
+  (let ((names (list-characters)))
+    (nth (random (length names)) names)))
+
+(defun %resolve-eyes (invocation)
+  "Return the ${eyes} override to pass SAY: an explicit --eyes value when
+given, else the string for --eyes-preset when given, else NIL (SAY's own
+\"oo\" default). --eyes always wins over a preset when both are given."
+  (or (option-value invocation :eyes)
+      (let ((preset (option-value invocation :eyes-preset)))
+        (and preset (eyes-preset-string preset)))))
+
+(defun %list-characters-handler (invocation)
+  "Print every built-in character name, one per line, and return exit code
+0. Does not touch the message or standard input at all, so `cl-cowsay
+--list` never blocks waiting on a pipe that was never going to feed it."
+  (dolist (name (list-characters))
+    (write-line name (invocation-stdout invocation)))
   0)
 
-(defun make-cowsay-app ()
-  "Build a fresh CL-CLI app spec for `cl-cowsay`. A function rather than a
-constant so tests can build an independent instance per run."
-  (make-app
-   :name "cl-cowsay"
-   :version (%cowsay-version)
-   :summary "Render an ASCII-art character saying or thinking a message."
-   :description
-   "Word-wraps MESSAGE -- given as positional words, or read from standard
+(defun %cowsay-handler (invocation)
+  (if (option-value invocation :list)
+      (%list-characters-handler invocation)
+      (let ((message (%message-from-invocation invocation))
+            (character (if (option-value invocation :random)
+                           (%pick-random-character)
+                           (option-value invocation :character)))
+            (mode (if (option-value invocation :think) :thought :speech))
+            (eyes (%resolve-eyes invocation))
+            (tongue (option-value invocation :tongue))
+            (width (option-value invocation :width))
+            (no-wrap (option-value invocation :no-wrap)))
+        (write-string (say message :character character :mode mode
+                                   :eyes eyes :tongue tongue :width width
+                                   :no-wrap no-wrap)
+                      (invocation-stdout invocation))
+        (terpri (invocation-stdout invocation))
+        0)))
+
+(define-app *cowsay-app*
+    (:name "cl-cowsay"
+     :version (%cowsay-version)
+     :summary "Render an ASCII-art character saying or thinking a message."
+     :description
+     "Word-wraps MESSAGE -- given as positional words, or read from standard
 input when none are given -- into a speech or thought bubble drawn above a
 built-in ASCII-art character."
-   :global-options
-   (list (make-option :name "character" :short #\c :kind :value
-                      :choices (list-characters)
-                      :default "cow"
-                      :description "Built-in character to draw.")
-         (make-option :name "think" :short #\T :kind :flag
-                      :description "Use a thought bubble instead of a speech bubble.")
-         (make-option :name "eyes" :short #\e :kind :value
-                      :description "Override the character's eyes (default \"oo\").")
-         (make-option :name "tongue" :short #\t :kind :value
-                      :description "Override the character's tongue (default empty).")
-         (make-option :name "width" :short #\w :kind :value :type :integer :min 1
-                      :default 40
-                      :description "Column width to wrap MESSAGE to."))
-   :positionals
-   (list (make-positional :key :message :rest-p t
-                          :description "Words of the message. Reads standard input when omitted."))
-   :handler #'%cowsay-handler))
+     :handler #'%cowsay-handler)
+  (:option "character" :short #\c :kind :value
+   :choices (list-characters)
+   :default "cow"
+   :description "Built-in character to draw.")
+  (:option "think" :short #\T :kind :flag
+   :description "Use a thought bubble instead of a speech bubble.")
+  (:option "eyes" :short #\e :kind :value
+   :description "Override the character's eyes (default \"oo\").")
+  (:option "eyes-preset" :short #\E :kind :value
+   :choices (list-eye-presets)
+   :description "Preset eyes (borg, dead, greedy, paranoid, stoned, tired, wired, youthful); --eyes overrides this.")
+  (:option "tongue" :short #\t :kind :value
+   :description "Override the character's tongue (default empty).")
+  (:option "width" :short #\w :kind :value :type :integer :min 1
+   :default 40
+   :description "Column width to wrap MESSAGE to.")
+  (:option "no-wrap" :short #\n :kind :flag
+   :description "Do not word-wrap MESSAGE; only its own embedded newlines break lines.")
+  (:option "list" :short #\l :kind :flag
+   :description "List every built-in character name and exit.")
+  (:option "random" :short #\r :kind :flag
+   :description "Pick a random built-in character, ignoring --character.")
+  (:positional :message :rest-p t
+   :description "Words of the message. Reads standard input when omitted."))
 
 (defun main (&optional (argv (current-process-argv)))
-  "Parse ARGV against MAKE-COWSAY-APP and exit the process with the
-resulting code. The default ARGV is the live process argv, so this is safe
-to call directly from a toplevel form."
-  (uiop:quit (run-app (make-cowsay-app) :argv argv)))
+  "Parse ARGV against *COWSAY-APP* and exit the process with the resulting
+code. The default ARGV is the live process argv, so this is safe to call
+directly from a toplevel form."
+  (quit (run-app *cowsay-app* :argv argv)))
 
 (defun image-entry-point ()
   "Toplevel of the delivered `cl-cowsay` executable, named by :ENTRY-POINT in
 cl-cowsay.asd. A dumped image comes back with the state it was dumped with,
 which for a packaged build is a build sandbox that no longer exists; this
 puts the process back in touch with the machine it is actually running on
-before the CLI sees an argument."
-  (setf *default-pathname-defaults* (uiop:getcwd))
+before the CLI sees an argument. GETCWD and QUIT are HOST-KIT's, not UIOP's --
+this executable is SBCL-only already (see :BUILD-OPERATION in
+cl-cowsay.asd), so UIOP's cross-implementation portability buys nothing here.
+UIOP:SETUP-TEMPORARY-DIRECTORY has no HOST-KIT equivalent; it stays, since
+cl-tty-kit's raw-mode/pty machinery may need it even though cl-cowsay itself
+never opens a temporary file."
+  (setf *default-pathname-defaults* (getcwd))
   (uiop:setup-temporary-directory)
   (main))

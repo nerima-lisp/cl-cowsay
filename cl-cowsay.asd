@@ -35,17 +35,26 @@ ${thoughts} substitution scheme."
   :entry-point "cl-cowsay/cli::image-entry-point"
   ;; cl-tty-kit supplies display-width-aware word wrapping (WRAP-STRING) and
   ;; padding; cl-cli supplies the argument parser and --help/--version
-  ;; scaffolding. Both are dependency-free L1 utilities within this org.
-  :depends-on ("cl-tty-kit" ; word-wrap and padding for the message bubble
-               "cl-cli")    ; declarative CLI parsing, --help/--version
+  ;; scaffolding; cl-host-kit supplies QUIT and GETCWD -- src/cli.lisp is
+  ;; SBCL-only already (see cl-cowsay.asd's own :build-operation), so it has
+  ;; no use for UIOP's cross-implementation portability, only the two
+  ;; process/filesystem primitives IMAGE-ENTRY-POINT needs. cl-cmatrix (a
+  ;; sibling terminal tool) makes the same substitution for the same reason.
+  :depends-on ("cl-tty-kit"  ; word-wrap and padding for the message bubble
+               "cl-cli"      ; declarative CLI parsing, --help/--version
+               "cl-host-kit") ; QUIT, GETCWD -- host-system interaction, not UIOP
   :pathname "src"
   :serial t
   :components
   ;; src/ is flat and every defpackage lives in src/package.lisp.
   ((:file "package")
+   (:file "macros")
    (:file "conditions")
    (:file "template")
    (:file "characters")
+   (:file "characters-data")
+   (:file "eyes-data")
+   (:file "eyes")
    (:file "bubble")
    (:file "render")
    (:file "cli"))
@@ -71,8 +80,11 @@ ${thoughts} substitution scheme."
   :serial t
   :components
   ((:file "package")
+   (:file "macros-test")
    (:file "template-test")
    (:file "characters-test")
+   (:file "characters-data-test")
+   (:file "eyes-test")
    (:file "bubble-test")
    (:file "conditions-test")
    (:file "render-test")

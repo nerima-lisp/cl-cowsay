@@ -42,14 +42,13 @@
             :to-be-truthy)))
 
 (describe "%replace-all"
-  (it "replaces every non-overlapping occurrence of a non-empty OLD"
-    (expect (string= (cl-cowsay::%replace-all "aXbXc" "X" "-") "a-b-c")
-            :to-be-truthy))
-
-  (it "returns STRING unchanged when OLD is empty, rather than looping forever"
-    (expect (string= (cl-cowsay::%replace-all "abc" "" "-") "abc")
-            :to-be-truthy))
-
-  (it "returns STRING unchanged when OLD does not occur"
-    (expect (string= (cl-cowsay::%replace-all "abc" "z" "-") "abc")
-            :to-be-truthy)))
+  ;; The empty-OLD row is the one worth calling out on its own: an empty
+  ;; search string would match at every position and never advance,
+  ;; looping forever, so %REPLACE-ALL treats it as a no-op instead of
+  ;; scanning. The "does not occur" row is the ordinary early-exit case.
+  (it-each (("aXbXc" "X" "-" "a-b-c")
+            ("abc" "" "-" "abc")
+            ("abc" "z" "-" "abc"))
+      "replaces ~S with ~S in ~S -> ~S"
+      (string old new expected)
+    (expect (string= (cl-cowsay::%replace-all string old new) expected) :to-be-truthy)))

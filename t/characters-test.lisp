@@ -6,8 +6,8 @@
   (it "includes the default \"cow\" character"
     (expect (member "cow" (list-characters) :test #'string=) :to-be-truthy))
 
-  (it "lists at least four built-in characters"
-    (expect (>= (length (list-characters)) 4) :to-be-truthy))
+  (it "lists at least twenty built-in characters"
+    (expect (>= (length (list-characters)) 20) :to-be-truthy))
 
   (it "returns names sorted alphabetically"
     (expect (equal (list-characters) (sort (copy-list (list-characters)) #'string<))
@@ -31,9 +31,8 @@
             :to-be-truthy))
 
   (it "signals unknown-character for an unregistered name"
-    (expect (signals (cl-cowsay::find-character-template "not-a-real-character")
-                     'unknown-character)
-            :to-be-truthy)))
+    (signals unknown-character
+        (cl-cowsay::find-character-template "not-a-real-character"))))
 
 (describe "every built-in character's art"
   (it "has at least one non-empty line for every registered character"

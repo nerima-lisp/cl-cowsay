@@ -48,9 +48,17 @@ cl-cowsay "Hello!"                       # speech bubble, default cow
 cl-cowsay --think "Hmm."                 # thought bubble
 cl-cowsay -c robot "Beep boop."          # a different built-in character
 cl-cowsay --eyes "^^" --tongue "U" "Hi"  # override eyes and tongue
+cl-cowsay -E dead "Rest in peace"        # a preset eyes shortcut
+cl-cowsay -r "Surprise me"               # a random character
+cl-cowsay -l                             # list every character name
+cl-cowsay -n "kept on one line"          # disable word-wrap
 echo "piped in" | cl-cowsay              # message from standard input
 cl-cowsay --help                         # every flag, free from cl-cli
 ```
 
-See [API Reference](reference/api.md) for `cl-cowsay:say`,
-`cl-cowsay:list-characters`, and the conditions it signals.
+`cl-cowsay` ships 29 built-in characters -- run `cl-cowsay -l` to list them,
+or see the [character gallery](guide/characters.md) for what each looks like. See
+the [CLI reference](reference/cli.md) for every flag, and the
+[API reference](reference/api.md) for `cl-cowsay:say`,
+`cl-cowsay:list-characters`, `cl-cowsay:eyes-preset-string`, and the
+conditions it signals.

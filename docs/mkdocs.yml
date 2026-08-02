@@ -42,6 +42,10 @@ markdown_extensions:
 # unlisted page. See PACKAGE_STANDARD.md / DOCS_STANDARD.md.
 nav:
   - Home: index.md
-  - Getting started: getting-started.md
+  - Getting Started: getting-started.md
+  - Guide:
+      - Character gallery: guide/characters.md
+      - Examples: guide/examples.md
   - Reference:
       - API: reference/api.md
+      - CLI: reference/cli.md
