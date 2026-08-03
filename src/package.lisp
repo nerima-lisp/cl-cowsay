@@ -8,6 +8,10 @@
 ;;;; ride.
 
 (defpackage #:cl-cowsay
+  (:documentation "Word-wrap a message into a speech or thought bubble above
+a built-in ASCII-art character. LIST-CHARACTERS and LIST-EYE-PRESETS name
+every built-in this library ships; SAY is the one function that renders
+one.")
   (:use #:cl)
   (:export
    ;; Rendering
@@ -46,7 +50,8 @@
                 #:option-value
                 #:positional-value
                 #:invocation-stdout
-                #:current-process-argv)
+                #:current-process-argv
+                #:render-completion)
   (:import-from #:host-kit
                 #:quit
                 #:getcwd)

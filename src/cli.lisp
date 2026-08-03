@@ -72,23 +72,27 @@ given, else the string for --eyes-preset when given, else NIL (SAY's own
   0)
 
 (defun %cowsay-handler (invocation)
-  (if (option-value invocation :list)
-      (%list-characters-handler invocation)
-      (let ((message (%message-from-invocation invocation))
-            (character (if (option-value invocation :random)
-                           (%pick-random-character)
-                           (option-value invocation :character)))
-            (mode (if (option-value invocation :think) :thought :speech))
-            (eyes (%resolve-eyes invocation))
-            (tongue (option-value invocation :tongue))
-            (width (option-value invocation :width))
-            (no-wrap (option-value invocation :no-wrap)))
-        (write-string (say message :character character :mode mode
-                                   :eyes eyes :tongue tongue :width width
-                                   :no-wrap no-wrap)
-                      (invocation-stdout invocation))
-        (terpri (invocation-stdout invocation))
-        0)))
+  (cond
+    ((option-value invocation :completion)
+     (%completion-handler invocation))
+    ((option-value invocation :list)
+     (%list-characters-handler invocation))
+    (t
+     (let ((message (%message-from-invocation invocation))
+           (character (if (option-value invocation :random)
+                          (%pick-random-character)
+                          (option-value invocation :character)))
+           (mode (if (option-value invocation :think) :thought :speech))
+           (eyes (%resolve-eyes invocation))
+           (tongue (option-value invocation :tongue))
+           (width (option-value invocation :width))
+           (no-wrap (option-value invocation :no-wrap)))
+       (write-string (say message :character character :mode mode
+                                  :eyes eyes :tongue tongue :width width
+                                  :no-wrap no-wrap)
+                     (invocation-stdout invocation))
+       (terpri (invocation-stdout invocation))
+       0))))
 
 (define-app *cowsay-app*
     (:name "cl-cowsay"
@@ -109,7 +113,7 @@ built-in ASCII-art character."
    :description "Override the character's eyes (default \"oo\").")
   (:option "eyes-preset" :short #\E :kind :value
    :choices (list-eye-presets)
-   :description "Preset eyes (borg, dead, greedy, paranoid, stoned, tired, wired, youthful); --eyes overrides this.")
+   :description "Preset eyes; --eyes overrides this.")
   (:option "tongue" :short #\t :kind :value
    :description "Override the character's tongue (default empty).")
   (:option "width" :short #\w :kind :value :type :integer :min 1
@@ -121,8 +125,23 @@ built-in ASCII-art character."
    :description "List every built-in character name and exit.")
   (:option "random" :short #\r :kind :flag
    :description "Pick a random built-in character, ignoring --character.")
+  (:option "completion" :kind :value
+   :choices '("bash" "zsh" "fish" "powershell" "nushell" "elvish")
+   :description "Print a shell completion script for the named shell and exit.")
   (:positional :message :rest-p t
    :description "Words of the message. Reads standard input when omitted."))
+
+(defun %completion-handler (invocation)
+  "Print a shell completion script for *COWSAY-APP*, for the shell named by
+--completion, and return exit code 0. Does not touch the message or standard
+input at all, so `cl-cowsay --completion bash` never blocks waiting on a pipe
+that was never going to feed it. Defined after *COWSAY-APP* itself, which it
+renders -- CL-CLI's RENDER-COMPLETION walks the live app spec (its options,
+their :choices, and this docstring's own :description text) rather than a
+second, hand-written copy of it."
+  (render-completion *cowsay-app* (option-value invocation :completion)
+                      (invocation-stdout invocation))
+  0)
 
 (defun main (&optional (argv (current-process-argv)))
   "Parse ARGV against *COWSAY-APP* and exit the process with the resulting
@@ -138,9 +157,9 @@ puts the process back in touch with the machine it is actually running on
 before the CLI sees an argument. GETCWD and QUIT are HOST-KIT's, not UIOP's --
 this executable is SBCL-only already (see :BUILD-OPERATION in
 cl-cowsay.asd), so UIOP's cross-implementation portability buys nothing here.
-UIOP:SETUP-TEMPORARY-DIRECTORY has no HOST-KIT equivalent; it stays, since
-cl-tty-kit's raw-mode/pty machinery may need it even though cl-cowsay itself
-never opens a temporary file."
+No UIOP:SETUP-TEMPORARY-DIRECTORY call either: this package's only cl-tty-kit
+use is WRAP-STRING/PAD-STRING/STRING-WIDTH (pure string functions, no pty, no
+raw terminal mode, no temporary file), so there is nothing downstream for a
+stale UIOP temporary-directory path to affect."
   (setf *default-pathname-defaults* (getcwd))
-  (uiop:setup-temporary-directory)
   (main))

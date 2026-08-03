@@ -41,9 +41,9 @@ content line, so the bubble is never fewer than three lines."
          (side (%bubble-side-character mode))
          (top (concatenate 'string " " (make-string (+ width 2) :initial-element #\_)))
          (bottom (concatenate 'string " " (make-string (+ width 2) :initial-element #\-))))
-    (list* top
-           (append
-            (mapcar (lambda (line)
-                      (format nil "~C ~A ~C" side (cl-tty-kit:pad-string line width) side))
-                    content)
-            (list bottom)))))
+    (cons top
+          (append
+           (mapcar (lambda (line)
+                     (format nil "~C ~A ~C" side (cl-tty-kit:pad-string line width) side))
+                   content)
+           (list bottom)))))

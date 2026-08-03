@@ -2,6 +2,20 @@
 
 (in-package #:cl-cowsay/test)
 
+(describe "%split-on-newlines"
+  (it-each (("" (""))
+            ("no newlines here" ("no newlines here"))
+            ("a
+b" ("a" "b"))
+            ("a
+
+b" ("a" "" "b"))
+            ("trailing
+" ("trailing" "")))
+      "splits ~S into ~S"
+      (message expected)
+    (expect (equal (cl-cowsay::%split-on-newlines message) expected) :to-be-truthy)))
+
 (describe "say"
   ;; A snapshot, not piecemeal SEARCH/FIND assertions, is what actually
   ;; guards the bubble's exact layout -- box width, connector placement,
@@ -98,4 +112,13 @@
         (expect (search "line two" result) :to-be-truthy))))
 
   (it "renders an empty message without error when :no-wrap is true"
-    (expect (stringp (say "" :no-wrap t)) :to-be-truthy)))
+    (expect (stringp (say "" :no-wrap t)) :to-be-truthy))
+
+  ;; A fixed, always-valid :character and :width means the only two
+  ;; conditions SAY ever signals (UNKNOWN-CHARACTER, INVALID-MESSAGE) are
+  ;; both impossible here -- so a MESSAGE that makes it crash some other
+  ;; way, on any generated string at all, is a real bug in SAY itself.
+  (it-fuzz "never crashes on an arbitrary generated message"
+      ((message (gen-string :min-length 0 :max-length 200)))
+      (:trials 200 :timeout-per-trial 2)
+    (say message)))

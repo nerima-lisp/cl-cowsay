@@ -30,12 +30,16 @@
 
     # Display-width-aware word wrap and padding (cl-tty-kit:wrap-string,
     # cl-tty-kit:pad-string, cl-tty-kit:string-width), used by src/bubble.lisp
-    # and src/render.lisp. v1.1.0 is now tagged; the animation work it adds
-    # (entity/sprite/tick-loop) is orthogonal to a one-shot renderer like this
-    # one, but the word-wrap/pad API this package actually uses is unchanged
-    # and covered by cl-tty-kit's own API stability guarantee.
+    # and src/render.lisp. v1.4.0's additions (stream-fd/fd-wait polling,
+    # renderer-invalidate, with-screen-batch, terminal-size/stream-input
+    # pollers) are all for a resident, raw-mode TUI's tick loop; this is a
+    # one-shot, non-interactive renderer (see src/cli.lisp's own header
+    # comment), so none of them apply here. The word-wrap/pad API this
+    # package actually uses is unchanged and covered by cl-tty-kit's own API
+    # stability guarantee; the version bump alone still carries the SBCL
+    # type-declaration/optimization pass v1.4.0 made across its hot paths.
     cl-tty-kit = {
-      url = "github:nerima-lisp/cl-tty-kit/v1.3.0";
+      url = "github:nerima-lisp/cl-tty-kit/v1.4.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

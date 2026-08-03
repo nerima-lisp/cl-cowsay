@@ -77,7 +77,7 @@ this)."
   (it "prints a rendered bubble for a positional message and exits 0"
     (multiple-value-bind (output code) (%run-cowsay '("cl-cowsay" "hello" "world"))
       (with-soft-assertions
-        (expect (= code 0) :to-be-truthy)
+        (expect (zerop code) :to-be-truthy)
         (expect (search "hello world" output) :to-be-truthy)
         (expect (find #\| output) :to-be-truthy))))
 
@@ -110,13 +110,13 @@ this)."
   (it "exits 0 on --help without invoking the message handler"
     (multiple-value-bind (output code) (%run-cowsay '("cl-cowsay" "--help"))
       (with-soft-assertions
-        (expect (= code 0) :to-be-truthy)
+        (expect (zerop code) :to-be-truthy)
         (expect (search "cl-cowsay" output) :to-be-truthy))))
 
   (it "exits 0 on --version and prints the app's version"
     (multiple-value-bind (output code) (%run-cowsay '("cl-cowsay" "--version"))
       (with-soft-assertions
-        (expect (= code 0) :to-be-truthy)
+        (expect (zerop code) :to-be-truthy)
         (expect (search "cl-cowsay" output) :to-be-truthy))))
 
   (it "prints every character name and exits 0 on --list, without touching a message"
@@ -124,7 +124,7 @@ this)."
     ;; %MESSAGE-FROM-INVOCATION would ever try to read standard input.
     (multiple-value-bind (output code) (%run-cowsay '("cl-cowsay" "--list"))
       (with-soft-assertions
-        (expect (= code 0) :to-be-truthy)
+        (expect (zerop code) :to-be-truthy)
         (expect (every (lambda (name) (search name output)) (list-characters))
                 :to-be-truthy))))
 
@@ -148,7 +148,22 @@ this)."
   (it "does not wrap the message on --no-wrap even past the default width"
     (let* ((long (make-string 60 :initial-element #\a))
            (output (%run-cowsay (list "cl-cowsay" "--no-wrap" long))))
-      (expect (= (count #\| output) 2) :to-be-truthy))))
+      (expect (= (count #\| output) 2) :to-be-truthy)))
+
+  ;; No :stdin is given, for the same reason as --list above: --completion
+  ;; must return before %MESSAGE-FROM-INVOCATION would ever try to read
+  ;; standard input.
+  (it-each (("bash") ("zsh") ("fish") ("powershell") ("nushell") ("elvish"))
+      "prints a ~A completion script naming the app and exits 0"
+      (shell)
+    (multiple-value-bind (output code) (%run-cowsay (list "cl-cowsay" "--completion" shell))
+      (with-soft-assertions
+        (expect (zerop code) :to-be-truthy)
+        (expect (search "cl-cowsay" output) :to-be-truthy))))
+
+  (it "rejects an unknown --completion shell name"
+    (signals cli-invalid-option-value
+        (parse-argv *cowsay-app* '("cl-cowsay" "--completion" "not-a-shell")))))
 
 (describe "main and image-entry-point"
   ;; Both ultimately call HOST-KIT:QUIT, which would tear down this test

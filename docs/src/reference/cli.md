@@ -21,14 +21,27 @@ input instead (up to 64 KiB; see [`stdin-too-large`](api.md#stdin-too-large)).
 | `--character` | `-c` | one of [`list-characters`](api.md#list-characters) | `cow` | Built-in character to draw. |
 | `--think` | `-T` | flag | off | Use a thought bubble instead of a speech bubble. |
 | `--eyes` | `-e` | free-form string | `oo` | Override the character's eyes. |
-| `--eyes-preset` | `-E` | one of [`list-eye-presets`](api.md#list-eye-presets) | none | Preset eyes (`borg`, `dead`, `greedy`, `paranoid`, `stoned`, `tired`, `wired`, `youthful`); `--eyes` overrides this when both are given. |
+| `--eyes-preset` | `-E` | one of [`list-eye-presets`](api.md#list-eye-presets) | none | Preset eyes; `--eyes` overrides this when both are given. |
 | `--tongue` | `-t` | free-form string | empty | Override the character's tongue. |
 | `--width` | `-w` | positive integer | `40` | Column width to wrap `MESSAGE` to. |
 | `--no-wrap` | `-n` | flag | off | Do not word-wrap `MESSAGE`; only its own embedded newlines break lines. |
 | `--list` | `-l` | flag | off | List every built-in character name and exit, without reading a message at all. |
 | `--random` | `-r` | flag | off | Pick a random built-in character, ignoring `--character`. |
+| `--completion` | -- | one of `bash`, `zsh`, `fish`, `powershell`, `nushell`, `elvish` | none | Print a shell completion script for the named shell and exit. |
 | `--help` | `-h` | flag | -- | Print usage and exit 0. |
 | `--version` | -- | flag | -- | Print the running version and exit 0. |
+
+## Shell completion
+
+`--completion` renders a completion script straight from `*cowsay-app*` via
+`cl-cli:render-completion`, so it always covers every flag above -- there is
+no second, hand-written list of options to keep in sync.
+
+```sh
+eval "$(cl-cowsay --completion bash)"                 # current bash session
+source <(cl-cowsay --completion zsh)                  # current zsh session
+source <(cl-cowsay --completion fish)                 # current fish session
+```
 
 ## Examples
 

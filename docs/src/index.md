@@ -20,6 +20,9 @@ art is copied from upstream.
 - **Speech and thought bubbles**, custom eyes/tongue overrides, adjustable
   wrap width, an optional no-wrap mode, a `--list` flag, and a `--random`
   character picker.
+- **Shell completion** for Bash, Zsh, Fish, PowerShell, Nushell, and Elvish
+  (`cl-cowsay --completion bash`), rendered live from the same option spec
+  `--help` uses.
 - A small, dependency-light **Lisp library** (`cl-cowsay:say`) behind the
   command line, usable on its own from any SBCL program.
 

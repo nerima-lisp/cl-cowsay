@@ -9,11 +9,23 @@
 (defun %split-on-newlines (message)
   "Split MESSAGE into a list of lines on #\\Newline, with no width-based
 wrapping applied. Used by SAY when NO-WRAP is true, so embedded newlines
-still break the bubble into multiple lines while nothing else does."
-  (loop for start = 0 then (1+ newline)
-        for newline = (position #\Newline message :start start)
-        collect (subseq message start (or newline (length message)))
-        while newline))
+still break the bubble into multiple lines while nothing else does.
+
+Written in continuation-passing style, mirroring %REPLACE-ALL
+(src/template.lisp): %SCAN-CPS walks MESSAGE left to right, and at each
+newline builds a continuation for \"how to finish the list once the lines
+after this one are known\" instead of collecting into a shared accumulator.
+The base case (no further newline) hands the final segment to that whole
+chain of closures, which then conses the result together outward from the
+last line to the first."
+  (labels ((%scan-cps (start k)
+             (let ((newline (position #\Newline message :start start)))
+               (if newline
+                   (%scan-cps (1+ newline)
+                              (lambda (rest-lines)
+                                (funcall k (cons (subseq message start newline) rest-lines))))
+                   (funcall k (list (subseq message start (length message))))))))
+    (%scan-cps 0 #'identity)))
 
 (defun say (message &key (character "cow") (mode :speech) eyes tongue (width 40) no-wrap)
   "Return a string rendering MESSAGE inside a speech bubble (MODE :SPEECH,

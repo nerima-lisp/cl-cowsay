@@ -17,6 +17,8 @@ the art is copied from upstream.
   `cowsay`-style eyes presets (`-E borg`, `-E dead`, ...)
 - Adjustable wrap width, an opt-out `--no-wrap` mode, and a `--random`
   character picker
+- Bash/Zsh/Fish/PowerShell/Nushell/Elvish completion scripts
+  (`cl-cowsay --completion bash`, ...)
 - A small library (`cl-cowsay:say`) behind the command line, usable on its
   own from any SBCL program
 

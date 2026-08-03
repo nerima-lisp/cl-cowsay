@@ -32,8 +32,13 @@ src/conditions.lisp shares. Expands to a DEFINE-CONDITION with:
   - the :DOCUMENTATION string from (:documentation STRING), passed through
     verbatim
 
+NAME-SLOT is interned into NAME's own package rather than whatever package
+happens to be current at macroexpansion time, so the reader always lands
+beside the condition it reads regardless of which package this macro is
+called from.
+
 CLAUSES may appear in either order; both are required."
-  (let* ((reader (intern (format nil "~A-~A" name slot)))
+  (let* ((reader (intern (format nil "~A-~A" name slot) (symbol-package name)))
          (report-clause (assoc :report-format clauses))
          (documentation-clause (assoc :documentation clauses)))
     (assert report-clause ()

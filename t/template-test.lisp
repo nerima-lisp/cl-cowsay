@@ -39,6 +39,20 @@
   (it "substitutes a repeated placeholder at every occurrence"
     (expect (string= (cl-cowsay::fill-template-line "${eyes}-${eyes}" :eyes "x")
                      "x-x")
+            :to-be-truthy))
+
+  ;; Values drawn only from "abc" can never contain "${", so none of them
+  ;; can accidentally complete a placeholder token FILL-TEMPLATE-LINE has
+  ;; not substituted yet; the result is exactly the template with each slot
+  ;; replaced, for any generated combination.
+  (it-property "substitutes all three placeholders for arbitrary non-overlapping values"
+      ((eyes (gen-string :min-length 0 :max-length 6 :alphabet "abc"))
+       (tongue (gen-string :min-length 0 :max-length 6 :alphabet "abc"))
+       (thoughts (gen-string :min-length 0 :max-length 6 :alphabet "abc")))
+    (expect (string= (cl-cowsay::fill-template-line "${thoughts}(${eyes})${tongue}"
+                                                     :eyes eyes :tongue tongue
+                                                     :thoughts thoughts)
+                     (concatenate 'string thoughts "(" eyes ")" tongue))
             :to-be-truthy)))
 
 (describe "%replace-all"
@@ -51,4 +65,20 @@
             ("abc" "z" "-" "abc"))
       "replaces ~S with ~S in ~S -> ~S"
       (string old new expected)
-    (expect (string= (cl-cowsay::%replace-all string old new) expected) :to-be-truthy)))
+    (expect (string= (cl-cowsay::%replace-all string old new) expected) :to-be-truthy))
+
+  ;; Two generated-input properties, each avoiding the one subtlety a
+  ;; single left-to-right non-overlapping scan has: replacing "ab" with ""
+  ;; in "aabb" leaves "a"+"b", which happens to spell "ab" again. Disjoint
+  ;; alphabets between STRING and OLD/NEW below sidestep that case entirely
+  ;; rather than asserting something only sometimes true.
+  (it-property "replacing OLD with itself is always a no-op"
+      ((string (gen-string :min-length 0 :max-length 40 :alphabet "abcXY"))
+       (old (gen-string :min-length 1 :max-length 5 :alphabet "abcXY")))
+    (expect (string= (cl-cowsay::%replace-all string old old) string) :to-be-truthy))
+
+  (it-property "leaves STRING unchanged when OLD cannot occur in it"
+      ((string (gen-string :min-length 0 :max-length 30 :alphabet "abc"))
+       (old (gen-string :min-length 1 :max-length 3 :alphabet "XYZ"))
+       (new (gen-string :min-length 0 :max-length 5 :alphabet "abc")))
+    (expect (string= (cl-cowsay::%replace-all string old new) string) :to-be-truthy)))

@@ -9,7 +9,9 @@
    ;; Soft (all-failures-collected) assertions
    #:with-soft-assertions
    ;; Mocks and spies
-   #:with-mocked-functions)
+   #:with-mocked-functions
+   ;; Property-based and fuzz testing
+   #:it-property #:it-fuzz #:gen-string #:gen-member #:gen-list)
   (:import-from #:cl-cowsay/cli
    #:*cowsay-app*
    #:main

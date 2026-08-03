@@ -12,7 +12,13 @@
 
 (define-condition cl-cowsay-error (error)
   ()
-  (:documentation "Base condition for every error CL-COWSAY signals."))
+  (:report (lambda (condition stream)
+             (declare (ignore condition))
+             (write-string "An error occurred in cl-cowsay." stream)))
+  (:documentation "Base condition for every error CL-COWSAY signals. Every
+condition below has its own, more specific :REPORT; this one only prints
+when CL-COWSAY-ERROR itself is signaled directly, which no code in this
+library does."))
 
 (define-cowsay-condition unknown-character (name)
   (:report-format "Unknown character ~S. Known characters: ~{~A~^, ~}" name (list-characters))
@@ -31,7 +37,7 @@ name that is not registered. LIST-EYE-PRESETS names every built-in preset
 this library ships."))
 
 (define-cowsay-condition stdin-too-large (limit)
-  (:report-format "Standard input exceeded ~D characters without reaching EOF; refusing to read further" limit)
+  (:report-format "Standard input exceeded ~D characters without reaching EOF" limit)
   (:documentation "Signaled when reading a message from standard input (no
 positional MESSAGE words given on the command line) sees more than
 STDIN-TOO-LARGE-LIMIT characters without reaching EOF, so an unbounded or
