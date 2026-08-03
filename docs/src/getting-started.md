@@ -53,6 +53,7 @@ cl-cowsay -r "Surprise me"               # a random character
 cl-cowsay -l                             # list every character name
 cl-cowsay -n "kept on one line"          # disable word-wrap
 echo "piped in" | cl-cowsay              # message from standard input
+cl-cowsay --completion bash              # shell completion script
 cl-cowsay --help                         # every flag, free from cl-cli
 ```
 

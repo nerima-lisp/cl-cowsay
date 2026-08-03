@@ -106,6 +106,19 @@ cl-cowsay -r "Surprise me!" # let cl-cowsay pick one at random
 
 See the [character gallery](characters.md) for what all 29 look like.
 
+## Shell completion
+
+`--completion` prints a completion script for the named shell, generated
+from the same option spec `--help` uses:
+
+```sh
+eval "$(cl-cowsay --completion bash)"   # current bash session
+source <(cl-cowsay --completion zsh)    # current zsh session
+```
+
+See the [CLI reference](../reference/cli.md#shell-completion) for every
+supported shell.
+
 ## Shell one-liners
 
 ```sh
