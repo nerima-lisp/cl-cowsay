@@ -27,16 +27,21 @@ happens.")
   "Read at most *MAX-STDIN-MESSAGE-LENGTH* characters of *STANDARD-INPUT*
 into a string, with a trailing newline (the one a shell-supplied EOF
 typically leaves) removed so it does not become an extra blank wrapped line.
-Reads one character at a time rather than by line, because a source with no
-newline at all (e.g. /dev/zero) would otherwise let a single READ-LINE call
-grow without bound; signals STDIN-TOO-LARGE once the limit is reached
-instead of continuing to read."
-  (let ((buffer (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)))
-    (loop for char = (read-char *standard-input* nil nil)
-          while char
-          do (when (>= (fill-pointer buffer) *max-stdin-message-length*)
-               (error 'stdin-too-large :limit *max-stdin-message-length*))
-             (vector-push-extend char buffer))
+Reads in fixed-size chunks via READ-SEQUENCE rather than one character at a
+time, so ordinary piped input avoids a READ-CHAR call per character; a
+source with no newline at all (e.g. /dev/zero) still cannot grow the buffer
+past *MAX-STDIN-MESSAGE-LENGTH* before signaling STDIN-TOO-LARGE."
+  (let* ((chunk-size 4096)
+         (chunk (make-string chunk-size))
+         (buffer (make-array chunk-size :element-type 'character
+                                         :adjustable t :fill-pointer 0)))
+    (loop for count = (read-sequence chunk *standard-input*)
+          while (plusp count)
+          do (let ((end (+ (fill-pointer buffer) count)))
+               (when (> end *max-stdin-message-length*)
+                 (error 'stdin-too-large :limit *max-stdin-message-length*))
+               (adjust-array buffer end :fill-pointer end)
+               (replace buffer chunk :start1 (- end count) :end2 count)))
     (string-right-trim '(#\Newline) buffer)))
 
 (defun %message-from-invocation (invocation)
@@ -87,10 +92,9 @@ given, else the string for --eyes-preset when given, else NIL (SAY's own
            (tongue (option-value invocation :tongue))
            (width (option-value invocation :width))
            (no-wrap (option-value invocation :no-wrap)))
-       (write-string (say message :character character :mode mode
-                                  :eyes eyes :tongue tongue :width width
-                                  :no-wrap no-wrap)
-                     (invocation-stdout invocation))
+       (cl-cowsay::%write-say message (invocation-stdout invocation)
+                              :character character :mode mode :eyes eyes :tongue tongue
+                              :width width :no-wrap no-wrap)
        (terpri (invocation-stdout invocation))
        0))))
 

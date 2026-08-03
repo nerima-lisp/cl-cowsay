@@ -42,3 +42,46 @@ simply absent from the result; this never signals on a missing placeholder."
     (%replace-all line "${thoughts}" thoughts)
     "${eyes}" eyes)
    "${tongue}" tongue))
+
+(defun %compile-template-line (line)
+  "Compile LINE into a list of literal strings and placeholder keywords
+(:THOUGHTS, :EYES, :TONGUE), in order. %WRITE-COMPILED-TEMPLATE-LINE replays
+this plan against a stream without rescanning LINE for ${...} tokens on
+every SAY call -- REGISTER-CHARACTER (src/characters.lisp) compiles each
+built-in character's lines once, at registration time."
+  (loop with chunks = nil
+        with start = 0
+        with index = 0
+        with length = (length line)
+        while (< index length)
+        do (cond
+             ((and (<= (+ index 11) length)
+                   (string= line "${thoughts}" :start1 index :end1 (+ index 11)))
+              (when (< start index) (push (subseq line start index) chunks))
+              (push :thoughts chunks)
+              (setf index (+ index 11) start index))
+             ((and (<= (+ index 7) length)
+                   (string= line "${eyes}" :start1 index :end1 (+ index 7)))
+              (when (< start index) (push (subseq line start index) chunks))
+              (push :eyes chunks)
+              (setf index (+ index 7) start index))
+             ((and (<= (+ index 9) length)
+                   (string= line "${tongue}" :start1 index :end1 (+ index 9)))
+              (when (< start index) (push (subseq line start index) chunks))
+              (push :tongue chunks)
+              (setf index (+ index 9) start index))
+             (t (incf index)))
+        finally (when (< start length) (push (subseq line start) chunks))
+                (return (nreverse chunks))))
+
+(defun %write-compiled-template-line (chunks output eyes tongue thoughts)
+  "Write CHUNKS (as produced by %COMPILE-TEMPLATE-LINE) to OUTPUT, writing
+EYES, TONGUE, or THOUGHTS in place of their respective placeholder keyword."
+  (dolist (chunk chunks)
+    (etypecase chunk
+      (string (write-string chunk output))
+      (keyword (write-string (ecase chunk
+                                (:eyes eyes)
+                                (:tongue tongue)
+                                (:thoughts thoughts))
+                              output)))))

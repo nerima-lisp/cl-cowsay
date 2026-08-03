@@ -85,6 +85,13 @@ this)."
     (let ((output (%run-cowsay '("cl-cowsay") :stdin "piped in")))
       (expect (search "piped in" output) :to-be-truthy)))
 
+  (it "reads a piped message across the internal chunk boundary"
+    ;; %READ-STDIN-MESSAGE reads in 4096-character chunks; 5000 characters
+    ;; forces a second READ-SEQUENCE call to pick up where the first left off.
+    (let ((message (make-string 5000 :initial-element #\a)))
+      (with-input-from-string (*standard-input* message)
+        (expect (string= message (cl-cowsay/cli::%read-stdin-message)) :to-be-truthy))))
+
   (it "signals a bounded error instead of reading unbounded standard input"
     ;; A single newline-free run longer than the internal cap: the scenario a
     ;; naive line-based reader would read forever (e.g. `cat /dev/zero |

@@ -121,4 +121,64 @@ b" ("a" "" "b"))
   (it-fuzz "never crashes on an arbitrary generated message"
       ((message (gen-string :min-length 0 :max-length 200)))
       (:trials 200 :timeout-per-trial 2)
-    (say message)))
+    (say message))
+
+  (it "combines ASCII validation with allocation-free wrapping analysis"
+    (multiple-value-bind (width ascii-p) (cl-cowsay::%ascii-wrapped-maximum-width "hello  world" 40)
+      (with-soft-assertions
+        (expect ascii-p :to-be-truthy)
+        (expect (= width 11) :to-be-truthy)))
+    (multiple-value-bind (width ascii-p)
+        (cl-cowsay::%ascii-wrapped-maximum-width (format nil "hello~%world") 40)
+      (with-soft-assertions
+        (expect (null width) :to-be-truthy)
+        (expect (null ascii-p) :to-be-truthy)))))
+
+(describe "stream rendering"
+  (it "matches say for normal and staged-placeholder substitutions"
+    (let ((message "hello world")
+          (keys (list :character "cow" :mode :speech :eyes "^^" :tongue "U" :width 12)))
+      (expect (string= (apply #'say message keys)
+                        (with-output-to-string (stream)
+                          (apply #'cl-cowsay::%write-say message stream keys)))
+              :to-be-truthy))
+    (let ((message (format nil "first line~%second line"))
+          (keys (list :character "cow" :mode :thought :eyes "${tongue}" :tongue "U" :width 8)))
+      (expect (string= (apply #'say message keys)
+                        (with-output-to-string (stream)
+                          (apply #'cl-cowsay::%write-say message stream keys)))
+              :to-be-truthy)))
+
+  (it "matches say for :no-wrap"
+    (let ((message (format nil "line one~%line two"))
+          (keys (list :character "cow" :no-wrap t)))
+      (expect (string= (apply #'say message keys)
+                        (with-output-to-string (stream)
+                          (apply #'cl-cowsay::%write-say message stream keys)))
+              :to-be-truthy)))
+
+  (it "matches fill-template-line for every placeholder slot"
+    (let ((line "${thoughts} (${eyes}) ${tongue}"))
+      (expect (string= (cl-cowsay::fill-template-line line :eyes "oo" :tongue "U" :thoughts "\\")
+                        (with-output-to-string (stream)
+                          (cl-cowsay::%write-template-line line stream "oo" "U" "\\" nil)))
+              :to-be-truthy))))
+
+(describe "Unicode stream wrapping"
+  (it "matches cl-tty-kit wrapping for combining characters, newlines, and hard splits"
+    (flet ((expect-match (message width &optional (mode :speech))
+             (let ((expected (with-output-to-string (stream)
+                                (cl-cowsay::%write-bubble (cl-tty-kit:wrap-string message width)
+                                                           mode stream)))
+                   (actual (multiple-value-bind (bubble-width character-widths)
+                               (cl-cowsay::%wrapped-maximum-width message width)
+                             (with-output-to-string (stream)
+                               (cl-cowsay::%write-wrapped-bubble message width bubble-width mode
+                                                                  stream character-widths)))))
+               (expect (string= expected actual) :to-be-truthy))))
+      (let ((combining (code-char #x0301))
+            (cjk (code-char #x4E2D)))
+        (expect-match (format nil "e~Ce~C word~%~C~C" combining combining cjk combining) 3)
+        (expect-match (format nil "e~Ce~Ce~C" combining combining combining) 1)
+        (expect-match (format nil "~C~C a ~C~C" cjk combining cjk combining) 3)
+        (expect-match (format nil "~%~C~%~%" cjk) 1 :thought)))))

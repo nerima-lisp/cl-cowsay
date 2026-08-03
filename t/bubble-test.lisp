@@ -49,4 +49,20 @@
       (with-soft-assertions
         (expect (= (length result) (if lines (+ (length lines) 2) 3)) :to-be-truthy)
         (expect (= (length (remove-duplicates (mapcar #'length content) :test #'=)) 1)
-                :to-be-truthy)))))
+                :to-be-truthy))))
+
+  (it "writes the same rows as BUBBLE-LINES, including for combining characters"
+    (let ((content (list (format nil "A~C" (code-char #x4E2D))
+                          (format nil "e~C" (code-char #x0301)))))
+      (expect (string= (format nil "~{~A~^~%~}" (cl-cowsay::bubble-lines content :thought))
+                        (with-output-to-string (stream)
+                          (cl-cowsay::%write-bubble content :thought stream)))
+              :to-be-truthy))))
+
+(describe "single-line streaming bubble"
+  (it "renders from the precomputed width"
+    (let ((actual (with-output-to-string (stream)
+                    (cl-cowsay::%write-single-line-bubble "hello" 5 :speech stream))))
+      (expect (string= " _______
+| hello |
+ -------" actual) :to-be-truthy))))

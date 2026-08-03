@@ -37,7 +37,6 @@ one.")
   (:documentation "The `cl-cowsay` command-line front end over CL-COWSAY.")
   (:use #:cl)
   (:import-from #:cl-cowsay
-                #:say
                 #:list-characters
                 #:list-eye-presets
                 #:eyes-preset-string

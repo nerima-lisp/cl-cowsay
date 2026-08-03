@@ -55,6 +55,15 @@
                      (concatenate 'string thoughts "(" eyes ")" tongue))
             :to-be-truthy)))
 
+(describe "%write-compiled-template-line"
+  (it "matches fill-template-line for repeated placeholders"
+    (let ((line "${thoughts} (${eyes}) ${eyes} ${tongue}"))
+      (expect (string= (cl-cowsay::fill-template-line line :eyes "oo" :tongue "U" :thoughts "\\")
+                        (with-output-to-string (stream)
+                          (cl-cowsay::%write-compiled-template-line
+                           (cl-cowsay::%compile-template-line line) stream "oo" "U" "\\")))
+              :to-be-truthy))))
+
 (describe "%replace-all"
   ;; The empty-OLD row is the one worth calling out on its own: an empty
   ;; search string would match at every position and never advance,
