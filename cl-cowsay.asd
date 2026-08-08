@@ -9,10 +9,7 @@
 (in-package #:asdf-user)
 
 (defsystem "cl-cowsay"
-  ;; All eight metadata fields are mandatory. :homepage, :bug-tracker and
-  ;; :source-control are what let a consumer find the project from a
-  ;; Quicklisp or ASDF listing alone.
-  :description "A one-shot ASCII-art talking-animal message tool for SBCL."
+  :description "A one-shot ASCII-art talking-animal rendering library for SBCL."
   :long-description "Word-wraps a message into a speech or thought bubble drawn above one of a
 small set of original, hand-written ASCII-art characters. Not a clone of the .cow/Perl file
 format used by upstream cowsay -- characters are Lisp data with a minimal ${eyes}/${tongue}/
@@ -20,62 +17,70 @@ ${thoughts} substitution scheme."
   :author "takeokunn <bararararatty@gmail.com>"
   :maintainer "takeokunn <bararararatty@gmail.com>"
   :license "MIT"
-  ;; Single source of truth for the version. flake.nix reads this form, and
-  ;; release.yml refuses to publish a tag that disagrees with it.
-  :version "0.1.0"
+  :version "0.2.0"
   :homepage "https://github.com/nerima-lisp/cl-cowsay"
   :bug-tracker "https://github.com/nerima-lisp/cl-cowsay/issues"
   :source-control (:git "https://github.com/nerima-lisp/cl-cowsay.git")
-  ;; How the `cl-cowsay` executable is delivered belongs here, not in a build
-  ;; system: `(asdf:operate 'asdf:program-op "cl-cowsay")` and `nix build`
-  ;; must produce the same binary. See cl-weave.asd for the pattern this
-  ;; follows.
-  :build-operation "program-op"
-  :build-pathname "cl-cowsay"
-  :entry-point "cl-cowsay/cli::image-entry-point"
-  ;; cl-tty-kit supplies display-width-aware word wrapping (WRAP-STRING) and
-  ;; padding; cl-cli supplies the argument parser and --help/--version
-  ;; scaffolding; cl-host-kit supplies QUIT and GETCWD -- src/cli.lisp is
-  ;; SBCL-only already (see cl-cowsay.asd's own :build-operation), so it has
-  ;; no use for UIOP's cross-implementation portability, only the two
-  ;; process/filesystem primitives IMAGE-ENTRY-POINT needs. cl-cmatrix (a
-  ;; sibling terminal tool) makes the same substitution for the same reason.
-  :depends-on ("cl-tty-kit"  ; word-wrap and padding for the message bubble
-               "cl-cli"      ; declarative CLI parsing, --help/--version
-               "cl-host-kit") ; QUIT, GETCWD -- host-system interaction, not UIOP
+  :depends-on ("cl-tty-kit")
   :pathname "src"
   :serial t
+  :around-compile
+  (lambda (thunk)
+    (let ((*package* (or (find-package "CL-COWSAY") *package*)))
+      (funcall thunk)))
   :components
-  ;; src/ is flat and every defpackage lives in src/package.lisp.
   ((:file "package")
    (:file "macros")
    (:file "conditions")
    (:file "template")
+   (:file "characters-definitions")
    (:file "characters")
    (:file "characters-data")
    (:file "eyes-data")
    (:file "eyes")
+   (:file "bubble-data")
    (:file "bubble")
-   (:file "render")
-   (:file "cli"))
-  ;; Mandatory. Without it `asdf:test-system "cl-cowsay"` succeeds while
-  ;; running zero tests.
+   (:file "wrap")
+   (:file "render"))
   :in-order-to ((test-op (test-op "cl-cowsay/test"))))
 
 ;;; The test system is `cl-cowsay/test` (singular, slash-separated) with
 ;;; :pathname "t". It is NOT `cl-cowsay-test` and NOT `cl-cowsay/tests`.
+(defsystem "cl-cowsay/cli"
+  :description "Command-line executable for the cl-cowsay rendering library."
+  :author "takeokunn <bararararatty@gmail.com>"
+  :maintainer "takeokunn <bararararatty@gmail.com>"
+  :license "MIT"
+  :version "0.2.0"
+  :homepage "https://github.com/nerima-lisp/cl-cowsay"
+  :bug-tracker "https://github.com/nerima-lisp/cl-cowsay/issues"
+  :source-control (:git "https://github.com/nerima-lisp/cl-cowsay.git")
+  :depends-on ("cl-cowsay" "cl-cli" "cl-host-kit")
+  :pathname "src"
+  :serial t
+  :around-compile
+  (lambda (thunk)
+    (let ((*package* (or (find-package "CL-COWSAY/CLI") *package*)))
+      (funcall thunk)))
+  :components
+  ((:file "cli-package")
+   (:file "cli-configuration")
+   (:file "cli")
+   (:file "cli-definition"))
+  :build-operation "program-op"
+  :build-pathname "cl-cowsay"
+  :entry-point "cl-cowsay/cli::image-entry-point")
+
 (defsystem "cl-cowsay/test"
   :description "Test system for cl-cowsay."
   :author "takeokunn <bararararatty@gmail.com>"
   :maintainer "takeokunn <bararararatty@gmail.com>"
   :license "MIT"
-  :version "0.1.0"
+  :version "0.2.0"
   :homepage "https://github.com/nerima-lisp/cl-cowsay"
   :bug-tracker "https://github.com/nerima-lisp/cl-cowsay/issues"
   :source-control (:git "https://github.com/nerima-lisp/cl-cowsay.git")
-  ;; cl-weave is the org's test framework everywhere. Do not introduce
-  ;; FiveAM, parachute, rove or prove.
-  :depends-on ("cl-cowsay" "cl-weave")
+  :depends-on ("cl-cowsay/cli" "cl-weave")
   :pathname "t"
   :serial t
   :components

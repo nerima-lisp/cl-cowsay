@@ -37,4 +37,19 @@
       (expect (equal (cl-cowsay::character-template-lines
                       (cl-cowsay::find-character-template "%macros-test-char"))
                      '("(${eyes})" "second line"))
-              :to-be-truthy))))
+              :to-be-truthy)))
+
+  (it "rejects a non-symbol name during macroexpansion"
+    (signals type-error
+      (macroexpand-1 '(cl-cowsay::defcharacter "not-a-symbol" "line"))))
+  (it "compiles a literal prefix before a thoughts placeholder"
+    (cl-cowsay::defcharacter %macros-test-thoughts-prefix
+      "prefix${thoughts}" "(${eyes})")
+    (expect (search "prefix\\"
+                    (render-to-string "hi"
+                                     :character "%macros-test-thoughts-prefix"))
+            :to-be-truthy))
+
+  (it "rejects a non-string template line during macroexpansion"
+    (signals type-error
+      (macroexpand-1 '(cl-cowsay::defcharacter %macros-test-invalid 42)))))

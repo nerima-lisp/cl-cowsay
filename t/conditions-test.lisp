@@ -48,3 +48,9 @@ evaluated."
 
 (check-cowsay-condition stdin-too-large (:limit 65536) stdin-too-large-limit
   "65536")
+
+(check-cowsay-condition invalid-timeout (:seconds 0) invalid-timeout-seconds "0")
+
+(check-cowsay-condition operation-timeout (:operation :test) operation-timeout-operation "TEST")
+
+(describe "operation timeouts" (it "returns the body value within a positive timeout" (expect (= (with-operation-timeout (:test 1) 42) 42) :to-be-truthy)) (it "rejects non-positive and non-real timeouts" (with-soft-assertions (signals invalid-timeout (with-operation-timeout (:test 0) t)) (signals invalid-timeout (with-operation-timeout (:test -1) t)) (signals invalid-timeout (with-operation-timeout (:test "1") t)))) (it "signals operation-timeout after the deadline" (signals operation-timeout (with-operation-timeout (:test 0.001) (sleep 0.05)))))

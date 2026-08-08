@@ -42,6 +42,13 @@
                             (cl-cowsay::find-character-template name))))
                    (list-characters))
             :to-be-truthy))
+  (it "can render a message with every registered character"
+    (expect (every (lambda (name)
+                     (let ((output (render-to-string "hello" :character name)))
+                       (and (stringp output)
+                            (plusp (length output)))))
+                   (list-characters))
+            :to-be-truthy))
 
   (it "references the ${eyes} placeholder somewhere in every character"
     (expect (every (lambda (name)

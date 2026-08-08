@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - "docs/**"
+      - "README.md"
+      - "cl-cowsay.asd"
+      - "src/**"
       - "flake.nix"
       - "flake.lock"
       - ".github/workflows/docs.yml"
