@@ -11,8 +11,14 @@ cl-cowsay [OPTIONS] [MESSAGE...]
 ```
 
 `MESSAGE` is one or more positional words, joined by a single space. When no
-positional words are given, `cl-cowsay` reads the message from standard
-input instead (up to 64 KiB; see [`stdin-too-large`](api.md#stdin-too-large)).
+positional words are given, `cl-cowsay` reads the message from standard input
+instead, up to 65,536 characters (`64 * 1024`; the limit is measured in
+characters). The input read and rendering operation share a positive
+wall-clock timeout, defaulting to 10 seconds. All consecutive trailing newline characters are removed (see
+[`stdin-too-large`](api.md#stdin-too-large)). `--completion` takes precedence
+over `--list`, and both modes exit without reading standard input. Otherwise,
+the normal rendering path is used; when `--random` is present, it selects the
+character instead of `--character`.
 
 ## Options
 
@@ -24,6 +30,7 @@ input instead (up to 64 KiB; see [`stdin-too-large`](api.md#stdin-too-large)).
 | `--eyes-preset` | `-E` | one of [`list-eye-presets`](api.md#list-eye-presets) | none | Preset eyes; `--eyes` overrides this when both are given. |
 | `--tongue` | `-t` | free-form string | empty | Override the character's tongue. |
 | `--width` | `-w` | positive integer | `40` | Column width to wrap `MESSAGE` to. |
+| `--timeout` | `-o` | positive number | `10` | Wall-clock seconds allowed for input and rendering. |
 | `--no-wrap` | `-n` | flag | off | Do not word-wrap `MESSAGE`; only its own embedded newlines break lines. |
 | `--list` | `-l` | flag | off | List every built-in character name and exit, without reading a message at all. |
 | `--random` | `-r` | flag | off | Pick a random built-in character, ignoring `--character`. |
@@ -65,3 +72,5 @@ non-zero [`sysexits.h`](https://man.openbsd.org/sysexits)-style code from
 (`EX_SOFTWARE`) when [`stdin-too-large`](api.md#stdin-too-large) is signaled,
 or a non-zero parse-error code when an option or its value is invalid (an
 unknown `--character`, a non-positive `--width`, and so on).
+Successful rendering, character-listing, and completion output goes to
+standard output; diagnostics and parse errors go to standard error.

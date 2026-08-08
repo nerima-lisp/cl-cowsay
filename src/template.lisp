@@ -6,8 +6,6 @@
 ;;;; is a list of plain strings that may contain ${eyes}, ${tongue}, and/or
 ;;;; ${thoughts}; FILL-TEMPLATE-LINE replaces each with caller-supplied text.
 
-(in-package #:cl-cowsay)
-
 (defun %replace-all (string old new)
   "Return STRING with every non-overlapping occurrence of OLD replaced by NEW.
 OLD must be non-empty; an empty OLD would match at every position and never
@@ -33,21 +31,24 @@ from the last match to the first."
                        (funcall k (subseq string start))))))
         (%scan-cps 0 #'identity))))
 
-(defun fill-template-line (line &key (eyes "") (tongue "") (thoughts ""))
+(defun fill-template-line (line &key eyes tongue thoughts)
   "Return LINE with ${eyes}, ${tongue}, and ${thoughts} replaced by EYES,
 TONGUE, and THOUGHTS respectively. A placeholder LINE does not contain is
 simply absent from the result; this never signals on a missing placeholder."
-  (%replace-all
-   (%replace-all
-    (%replace-all line "${thoughts}" thoughts)
-    "${eyes}" eyes)
-   "${tongue}" tongue))
+  (let ((eyes (or eyes ""))
+        (tongue (or tongue ""))
+        (thoughts (or thoughts "")))
+    (%replace-all
+     (%replace-all
+      (%replace-all line "${thoughts}" thoughts)
+      "${eyes}" eyes)
+     "${tongue}" tongue)))
 
 (defun %compile-template-line (line)
   "Compile LINE into a list of literal strings and placeholder keywords
 (:THOUGHTS, :EYES, :TONGUE), in order. %WRITE-COMPILED-TEMPLATE-LINE replays
 this plan against a stream without rescanning LINE for ${...} tokens on
-every SAY call -- REGISTER-CHARACTER (src/characters.lisp) compiles each
+every WRITE-SAY call -- REGISTER-CHARACTER (src/characters.lisp) compiles each
 built-in character's lines once, at registration time."
   (loop with chunks = nil
         with start = 0

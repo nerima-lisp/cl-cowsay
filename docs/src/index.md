@@ -23,7 +23,7 @@ art is copied from upstream.
 - **Shell completion** for Bash, Zsh, Fish, PowerShell, Nushell, and Elvish
   (`cl-cowsay --completion bash`), rendered live from the same option spec
   `--help` uses.
-- A small, dependency-light **Lisp library** (`cl-cowsay:say`) behind the
+- A small, dependency-light **Lisp library** (`cl-cowsay:write-say`) behind the
   command line, usable on its own from any SBCL program.
 
 ## Where to go next
@@ -32,4 +32,4 @@ art is copied from upstream.
 - [Character gallery](guide/characters.md) -- see every built-in character rendered.
 - [Examples](guide/examples.md) -- a cookbook of CLI and library usage.
 - [CLI reference](reference/cli.md) -- every flag, in one table.
-- [API reference](reference/api.md) -- `cl-cowsay:say` and the rest of the public surface.
+- [API reference](reference/api.md) -- `cl-cowsay:write-say` and the rest of the public surface.

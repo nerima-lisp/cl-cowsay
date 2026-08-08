@@ -2,17 +2,15 @@
 
 (in-package #:cl-cowsay/test)
 
-(defun %run-cowsay (argv &key stdin)
+(defun %run-cowsay (argv &key (stdin nil stdin-p))
   "Run *COWSAY-APP* against ARGV (a list of strings starting with the
 program name, as RUN-APP expects) and return (VALUES STDOUT-STRING
-EXIT-CODE). STDIN, when given, feeds *STANDARD-INPUT* for the run; omitted,
-the run sees whatever standard input this process already has (each ARGV
-below carries positional words, so no test exercising the default relies on
-this)."
+EXIT-CODE). When STDIN is supplied, even as the empty string, it feeds
+*STANDARD-INPUT* for the run; when omitted, the caller standard input is used."
   (let (code)
     (values (with-output-to-string (out)
               (setf code (flet ((run () (run-app *cowsay-app* :argv argv :stdout out)))
-                           (if stdin
+                           (if stdin-p
                                (with-input-from-string (*standard-input* stdin) (run))
                                (run)))))
             code)))
@@ -39,6 +37,14 @@ this)."
                                :width)
                  10)
               :to-be-truthy)))
+    (it "rejects invalid --width values"
+    (with-soft-assertions
+      (signals cli-invalid-option-value
+          (parse-argv *cowsay-app*
+                      (list "cl-cowsay" "--width" "0" "hi")))
+      (signals cli-invalid-option-value
+          (parse-argv *cowsay-app*
+                      (list "cl-cowsay" "--width" "not-an-integer" "hi")))))
 
   (it "parses --think/-T as a flag, defaulting to false"
     (with-soft-assertions
@@ -81,9 +87,27 @@ this)."
         (expect (search "hello world" output) :to-be-truthy)
         (expect (find #\| output) :to-be-truthy))))
 
-  (it "reads the message from standard input when no positional words are given"
-    (let ((output (%run-cowsay '("cl-cowsay") :stdin "piped in")))
-      (expect (search "piped in" output) :to-be-truthy)))
+  (it "normalizes a single trailing newline from stdin"
+    (multiple-value-bind (with-newline with-code)
+        (%run-cowsay (list "cl-cowsay") :stdin (format nil "boundary~%"))
+      (multiple-value-bind (without-newline without-code)
+          (%run-cowsay (list "cl-cowsay") :stdin "boundary")
+        (with-soft-assertions
+          (expect (zerop with-code) :to-be-truthy)
+          (expect (zerop without-code) :to-be-truthy)
+          (expect (string= with-newline without-newline) :to-be-truthy)))))
+
+  (it "distinguishes omitted stdin from explicitly empty stdin"
+    (with-input-from-string (*standard-input* "ambient")
+      (multiple-value-bind (omitted-output omitted-code)
+          (%run-cowsay (list "cl-cowsay"))
+        (multiple-value-bind (empty-output empty-code)
+            (%run-cowsay (list "cl-cowsay") :stdin "")
+          (with-soft-assertions
+            (expect (zerop omitted-code) :to-be-truthy)
+            (expect (search "ambient" omitted-output) :to-be-truthy)
+            (expect (zerop empty-code) :to-be-truthy)
+            (expect (not (search "ambient" empty-output)) :to-be-truthy))))))
 
   (it "reads a piped message across the internal chunk boundary"
     ;; %READ-STDIN-MESSAGE reads in 4096-character chunks; 5000 characters
@@ -138,11 +162,11 @@ this)."
   (it "renders one of the built-in characters' art on --random"
     ;; Character art never spells out its own name (it's ASCII shapes, not
     ;; letters), so this can't SEARCH for a name in OUTPUT -- it instead
-    ;; checks OUTPUT against every character's actual SAY output byte for
+    ;; checks OUTPUT against every character's actual WRITE-SAY output byte for
     ;; byte, which also exercises %PICK-RANDOM-CHARACTER as a black box.
     (let ((output (%run-cowsay '("cl-cowsay" "-r" "hi"))))
       (expect (some (lambda (name)
-                      (string= output (format nil "~A~%" (say "hi" :character name))))
+                      (string= output (format nil "~A~%" (render-to-string "hi" :character name))))
                     (list-characters))
               :to-be-truthy)))
 
@@ -156,6 +180,21 @@ this)."
     (let* ((long (make-string 60 :initial-element #\a))
            (output (%run-cowsay (list "cl-cowsay" "--no-wrap" long))))
       (expect (= (count #\| output) 2) :to-be-truthy)))
+  (it "forwards rendering options through run-app"
+    (multiple-value-bind (output code)
+        (%run-cowsay
+         (list "cl-cowsay" "--character" "cat" "--eyes" "^^"
+               "--tongue" "U" "--width" "10" "hello" "world"))
+      (with-soft-assertions
+        (expect (zerop code) :to-be-truthy)
+        (expect (string= output
+                         (format nil "~A~%"
+                                 (render-to-string "hello world"
+                                      :character "cat"
+                                      :eyes "^^"
+                                      :tongue "U"
+                                      :width 10)))
+                :to-be-truthy))))
 
   ;; No :stdin is given, for the same reason as --list above: --completion
   ;; must return before %MESSAGE-FROM-INVOCATION would ever try to read
@@ -198,3 +237,5 @@ this)."
         (let ((*standard-output* (make-broadcast-stream)))
           (image-entry-point)))
       (expect captured-code :to-be 0))))
+
+(describe "timeout option" (it "defaults and parses long and short timeout options" (with-soft-assertions (expect (= (option-value (parse-argv *cowsay-app* (list "cl-cowsay" "hi")) :timeout) +default-timeout-seconds+) :to-be-truthy) (expect (= (option-value (parse-argv *cowsay-app* (list "cl-cowsay" "--timeout" "2.5" "hi")) :timeout) 2.5) :to-be-truthy) (expect (= (option-value (parse-argv *cowsay-app* (list "cl-cowsay" "-o" "1.5" "hi")) :timeout) 1.5) :to-be-truthy))) (it "rejects a non-positive timeout" (signals cli-invalid-option-value (parse-argv *cowsay-app* (list "cl-cowsay" "--timeout" "0" "hi")))) (it "applies the timeout through run-app" (multiple-value-bind (output code) (%run-cowsay (list "cl-cowsay" "--timeout" "1" "hi")) (with-soft-assertions (expect (zerop code) :to-be-truthy) (expect (search "hi" output) :to-be-truthy)))))

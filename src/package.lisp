@@ -1,21 +1,19 @@
 ;;;; src/package.lisp
 ;;;;
-;;;; Two packages, both defined here per PACKAGE_STANDARD.md: CL-COWSAY is the
-;;;; rendering library (word-wrap a message into a bubble above a built-in
-;;;; ASCII-art character) and CL-COWSAY/CLI is the thin command-line front
-;;;; end over it. Splitting them keeps `(asdf:load-system "cl-cowsay")`
-;;;; usable as a library with no CL-CLI-flavoured argv parsing along for the
-;;;; ride.
+;;;; CL-COWSAY is the rendering library (word-wrap a message into a bubble
+;;;; above a built-in ASCII-art character). The command-line package lives in
+;;;; CLI-PACKAGE.LISP so loading this library does not load CLI dependencies.
 
 (defpackage #:cl-cowsay
   (:documentation "Word-wrap a message into a speech or thought bubble above
 a built-in ASCII-art character. LIST-CHARACTERS and LIST-EYE-PRESETS name
-every built-in this library ships; SAY is the one function that renders
-one.")
+every built-in this library ships; WRITE-SAY is the streaming renderer.")
   (:use #:cl)
   (:export
    ;; Rendering
-   #:say
+   #:write-say
+   #:+default-timeout-seconds+
+   #:with-operation-timeout
    ;; Built-in characters
    #:list-characters
    #:character-known-p
@@ -31,30 +29,8 @@ one.")
    #:invalid-message
    #:invalid-message-width
    #:stdin-too-large
-   #:stdin-too-large-limit))
-
-(defpackage #:cl-cowsay/cli
-  (:documentation "The `cl-cowsay` command-line front end over CL-COWSAY.")
-  (:use #:cl)
-  (:import-from #:cl-cowsay
-                #:list-characters
-                #:list-eye-presets
-                #:eyes-preset-string
-                #:cl-cowsay-error
-                #:stdin-too-large
-                #:stdin-too-large-limit)
-  (:import-from #:cl-cli
-                #:define-app
-                #:run-app
-                #:option-value
-                #:positional-value
-                #:invocation-stdout
-                #:current-process-argv
-                #:render-completion)
-  (:import-from #:host-kit
-                #:quit
-                #:getcwd)
-  (:export
-   #:*cowsay-app*
-   #:main
-   #:image-entry-point))
+   #:stdin-too-large-limit
+   #:invalid-timeout
+   #:invalid-timeout-seconds
+   #:operation-timeout
+   #:operation-timeout-operation))

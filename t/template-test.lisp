@@ -25,6 +25,11 @@
                                                      :eyes "oo" :tongue "U" :thoughts "\\")
                      "\\(oo)U")
             :to-be-truthy))
+  (it "substitutes adjacent placeholders without separators"
+    (expect (string= (cl-cowsay::fill-template-line "${thoughts}${eyes}${tongue}"
+                                                     :eyes "oo" :tongue "U" :thoughts "\\")
+                     "\\ooU")
+            :to-be-truthy))
 
   (it "defaults every placeholder to the empty string when unsupplied"
     (expect (string= (cl-cowsay::fill-template-line "[${eyes}|${tongue}|${thoughts}]")
@@ -62,7 +67,24 @@
                         (with-output-to-string (stream)
                           (cl-cowsay::%write-compiled-template-line
                            (cl-cowsay::%compile-template-line line) stream "oo" "U" "\\")))
-              :to-be-truthy))))
+              :to-be-truthy)))
+
+  (it "writes adjacent placeholders without literal chunks"
+    (expect (string= (with-output-to-string (stream)
+                       (cl-cowsay::%write-compiled-template-line
+                        (cl-cowsay::%compile-template-line "${thoughts}${eyes}${tongue}")
+                        stream "oo" "U" "\\"))
+                     "\\ooU")
+            :to-be-truthy))
+  (it "writes a literal prefix before a placeholder" (expect (string= (with-output-to-string (stream) (cl-cowsay::%write-compiled-template-line (cl-cowsay::%compile-template-line "prefix${eyes}") stream "oo" "U" "x")) "prefixoo") :to-be-truthy))
+
+  (it "rejects malformed compiled chunks"
+    (signals type-error
+      (with-output-to-string (stream)
+        (cl-cowsay::%write-compiled-template-line '(42) stream "oo" "U" "\\")))
+    (signals error
+      (with-output-to-string (stream)
+        (cl-cowsay::%write-compiled-template-line '(:unknown) stream "oo" "U" "\\")))))
 
 (describe "%replace-all"
   ;; The empty-OLD row is the one worth calling out on its own: an empty

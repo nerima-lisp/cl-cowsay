@@ -10,7 +10,7 @@
 ;;;;
 ;;;;   DEFCHARACTER lets src/characters-data.lisp be nothing but literal
 ;;;;   ASCII-art DATA, with the registry call that puts each character
-;;;;   somewhere CL-COWSAY:SAY can find it written once, here, as LOGIC.
+;;;;   somewhere CL-COWSAY:WRITE-SAY can find it written once, here, as LOGIC.
 ;;;;
 ;;;; Neither macro controls evaluation order or introduces new syntax for its
 ;;;; own sake -- both exist because CL-COWSAY has more than one form of the
@@ -38,6 +38,8 @@ beside the condition it reads regardless of which package this macro is
 called from.
 
 CLAUSES may appear in either order; both are required."
+  (check-type name symbol)
+  (check-type slot symbol)
   (let* ((reader (intern (format nil "~A-~A" name slot) (symbol-package name)))
          (report-clause (assoc :report-format clauses))
          (documentation-clause (assoc :documentation clauses)))
@@ -47,7 +49,7 @@ CLAUSES may appear in either order; both are required."
             "DEFINE-COWSAY-CONDITION ~A: missing a (:documentation ...) clause." name)
     (destructuring-bind (control-string &rest args) (rest report-clause)
       `(define-condition ,name (cl-cowsay-error)
-         ((,slot :initarg ,(intern (symbol-name slot) :keyword) :reader ,reader))
+           ((,slot :initarg ,(intern (symbol-name slot) :keyword) :reader ,reader))
          (:report (lambda (condition stream)
                     (format stream ,control-string
                             ,@(mapcar (lambda (arg)
@@ -59,5 +61,24 @@ CLAUSES may appear in either order; both are required."
   "Register NAME -- an unevaluated symbol, downcased to its registry name --
 under LINES, literal template strings top to bottom, via REGISTER-CHARACTER.
 Every built-in character in src/characters-data.lisp is one DEFCHARACTER
-form; LIST-CHARACTERS and SAY see it the moment that file loads."
-  `(register-character ,(string-downcase (symbol-name name)) (list ,@lines)))
+form; LIST-CHARACTERS and WRITE-SAY see it the moment that file loads."
+  (check-type name symbol)
+  (dolist (line lines)
+    (check-type line string))
+  `(register-character ,(string-downcase (symbol-name name)) ',(copy-list lines)))
+
+(defmacro with-operation-timeout ((operation timeout-seconds) &body body)
+  "Run BODY with a positive TIMEOUT-SECONDS wall-clock limit.
+
+OPERATION is reported when SBCL interrupts the body. The macro translates
+SBCL's implementation condition into the library's stable
+OPERATION-TIMEOUT condition, while INVALID-TIMEOUT rejects zero, negative,
+and non-real limits before any work starts."
+  `(let ((seconds ,timeout-seconds))
+     (unless (and (realp seconds) (plusp seconds))
+       (error 'invalid-timeout :seconds seconds))
+     (handler-case
+         (sb-ext:with-timeout seconds
+           (progn ,@body))
+       (sb-ext:timeout ()
+         (error 'operation-timeout :operation ,operation)))))

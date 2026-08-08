@@ -3,10 +3,9 @@
 ;;;; DATA only: every built-in character, as a DEFCHARACTER form (src/
 ;;;; macros.lisp). Each is original ASCII art written for this project --
 ;;;; none of it is copied from, or a rendering of, upstream cowsay's .cow
-;;;; files. Registry LOGIC -- CHARACTER-TEMPLATE, REGISTER-CHARACTER,
-;;;; LIST-CHARACTERS, FIND-CHARACTER-TEMPLATE -- lives in src/characters.lisp,
-;;;; which this file depends on for DEFCHARACTER to have anything to expand
-;;;; into.
+;;;; files. Character storage and the CHARACTER-TEMPLATE structure live in
+;;;; src/characters-definitions.lisp; registry operations live in
+;;;; src/characters.lisp.
 
 (in-package #:cl-cowsay)
 

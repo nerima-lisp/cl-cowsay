@@ -1,11 +1,13 @@
 # Getting Started
 
-`cl-cowsay` targets **SBCL** and depends on two sibling nerima-lisp
-libraries: [`cl-tty-kit`](https://github.com/nerima-lisp/cl-tty-kit) for
-display-width-aware word wrapping, and
-[`cl-cli`](https://github.com/nerima-lisp/cl-cli) for argument parsing. The
-test system additionally uses
-[`cl-weave`](https://github.com/nerima-lisp/cl-weave).
+`cl-cowsay` targets **SBCL**. The library system declares one direct runtime
+dependency on [`cl-tty-kit`](https://github.com/nerima-lisp/cl-tty-kit) for
+display-width-aware word wrapping. The separate CLI system adds
+[`cl-cli`](https://github.com/nerima-lisp/cl-cli) for argument parsing and
+[`cl-host-kit`](https://github.com/nerima-lisp/cl-host-kit) for process exit
+and runtime working-directory handling. The test system additionally uses
+[`cl-weave`](https://github.com/nerima-lisp/cl-weave), which is test-only and
+not part of the runtime dependency closure.
 
 ## With Nix
 
@@ -14,21 +16,30 @@ test system additionally uses
 nix run github:nerima-lisp/cl-cowsay -- "Hello, nerima-lisp!"
 
 # Or from a checkout:
-nix build .#cl-cowsay   # build the library
+nix build .#default     # build the delivered executable package
 nix run .               # run the delivered binary
-nix flake check         # tests + formatting + docs, the same gate CI uses
+nix flake check         # tests + coverage + formatting + docs, the CI gate
 nix develop              # SBCL with CL_SOURCE_REGISTRY already set
 ```
 
+The `github:` form follows the repository's default branch, so it is
+convenient but not reproducible across branch changes. For reproducible remote
+execution, pin the flake reference to a reviewed release tag or commit. In a
+checkout, `nix run .` and `nix build .#default` use the checkout's
+`flake.lock`; keep that file when reproducing a build.
+
 ## As a library, without Nix
 
-Put `cl-cowsay`, `cl-tty-kit`, and `cl-cli` where ASDF can find them (for
-example under `~/common-lisp/`), then:
+The test system also needs [`cl-weave`](https://github.com/nerima-lisp/cl-weave),
+but it is not needed to load or run the runtime system.
+
+Put `cl-cowsay`, `cl-tty-kit`, `cl-cli`, and `cl-host-kit` where ASDF can find
+them (for example under `~/common-lisp/`), then load the library system:
 
 ```lisp
 (asdf:load-system "cl-cowsay")
 
-(format t "~A~%" (cl-cowsay:say "Hello, nerima-lisp!"))
+(cl-cowsay:write-say "Hello, nerima-lisp!" *standard-output*)
 ```
 
 ```text
@@ -55,11 +66,12 @@ cl-cowsay -n "kept on one line"          # disable word-wrap
 echo "piped in" | cl-cowsay              # message from standard input
 cl-cowsay --completion bash              # shell completion script
 cl-cowsay --help                         # every flag, free from cl-cli
+cl-cowsay --timeout 5 "bounded work"     # stop after five seconds
 ```
 
 `cl-cowsay` ships 29 built-in characters -- run `cl-cowsay -l` to list them,
 or see the [character gallery](guide/characters.md) for what each looks like. See
 the [CLI reference](reference/cli.md) for every flag, and the
-[API reference](reference/api.md) for `cl-cowsay:say`,
+[API reference](reference/api.md) for `cl-cowsay:write-say`,
 `cl-cowsay:list-characters`, `cl-cowsay:eyes-preset-string`, and the
 conditions it signals.

@@ -24,37 +24,37 @@
     };
 
     cl-weave = {
-      url = "github:nerima-lisp/cl-weave/v1.2.0";
+      url = "github:nerima-lisp/cl-weave/v1.3.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Display-width-aware word wrap and padding (cl-tty-kit:wrap-string,
-    # cl-tty-kit:pad-string, cl-tty-kit:string-width), used by src/bubble.lisp
-    # and src/render.lisp. v1.4.0's additions (stream-fd/fd-wait polling,
+    # Display-cell measurement (cl-tty-kit:char-width and
+    # cl-tty-kit:string-width), used by src/bubble.lisp and src/wrap.lisp.
+    # v1.4.0's additions (stream-fd/fd-wait polling,
     # renderer-invalidate, with-screen-batch, terminal-size/stream-input
     # pollers) are all for a resident, raw-mode TUI's tick loop; this is a
     # one-shot, non-interactive renderer (see src/cli.lisp's own header
-    # comment), so none of them apply here. The word-wrap/pad API this
-    # package actually uses is unchanged and covered by cl-tty-kit's own API
-    # stability guarantee; the version bump alone still carries the SBCL
-    # type-declaration/optimization pass v1.4.0 made across its hot paths.
+    # comment), so none of them apply here. The width API this package uses is
+    # covered by cl-tty-kit's own API stability guarantee; the version bump
+    # also carries the SBCL type-declaration/optimization pass v1.4.0 made
+    # across its hot paths.
     cl-tty-kit = {
-      url = "github:nerima-lisp/cl-tty-kit/v1.4.0";
+      url = "github:nerima-lisp/cl-tty-kit/v1.5.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Not a dependency this package names anywhere: cl-tty-kit v1.2.0 grew a
-    # `:depends-on ("cl-codec-kit")`, and cl-tty-kit's package installs only
-    # its OWN source tree, so putting it on this build's registry leaves ASDF
-    # unable to resolve that edge -- `Component "cl-codec-kit" not found,
-    # required by #<SYSTEM "cl-tty-kit">`. Dependency-free itself.
+    # cl-tty-kit v1.5.0 names cl-codec-kit and cl-concurrent-kit in its ASDF
+    # system. Its package installs only its OWN source tree, so the sibling
+    # source trees must also be placed on this build's registry or ASDF cannot
+    # resolve those edges. cl-concurrent-kit's matching boundary/date inputs
+    # are registered below from cl-tty-kit's locked input graph.
     # `flake = false`: consumed as a SOURCE TREE and built here, not read from
     # its own `packages` output. cl-codec-kit has not cut a release declaring
     # aarch64-darwin, so reading `packages.${system}` would fail on macOS; a
     # source tree has no platform at all. This is ADR-0079's default shape --
     # a non-flake input also contributes no second nixpkgs to flake.lock.
     cl-codec-kit = {
-      url = "github:nerima-lisp/cl-codec-kit/v0.4.0";
+      url = "github:nerima-lisp/cl-codec-kit/v0.5.0";
       flake = false;
     };
 
@@ -75,7 +75,7 @@
     # agent-driven refactors (paredit edit/refactor/query/fix) and a
     # structural-parse lint gate reused in `checks.paredit-lint` below.
     paredit-cli = {
-      url = "github:nerima-lisp/paredit-cli/v1.4.0";
+      url = "github:nerima-lisp/paredit-cli/v1.5.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -90,7 +90,7 @@
     # `packages.${system}` output here would give `installSource` two
     # differently-shaped copies of the same system name.
     cl-host-kit = {
-      url = "github:nerima-lisp/cl-host-kit/v0.3.0";
+      url = "github:nerima-lisp/cl-host-kit/v0.3.1";
       flake = false;
     };
 
@@ -173,21 +173,52 @@
       # `attribute 'ancestry' missing`; `fromDerivation` is cl-nix-forge's own
       # adapter for exactly that -- a package it did not build and about which
       # it can assume nothing. cl-regex-kit wraps cl-weave the same way.
-      lispDependencies = ctx: [
-        (ctx.cl.fromDerivation { drv = cl-tty-kit.packages.${ctx.system}.cl-tty-kit; })
-        (ctx.cl.lispDerivation {
-          lispSystem = "cl-codec-kit";
-          version = ctx.cl.fromAsdSystem "${cl-codec-kit}/cl-codec-kit.asd";
-          src = cl-codec-kit;
-        })
-        cl-cli.packages.${ctx.system}.cl-cli
-        (ctx.cl.lispDerivation {
-          pname = "cl-host-kit";
-          lispSystem = "cl-host-kit";
-          version = ctx.cl.fromAsdSystem "${cl-host-kit}/cl-host-kit.asd";
-          src = cl-host-kit;
-        })
-      ];
+      lispDependencies =
+        ctx:
+        let
+          hostKit = ctx.cl.lispDerivation {
+            pname = "cl-host-kit";
+            lispSystem = "cl-host-kit";
+            version = ctx.cl.fromAsdSystem "${cl-host-kit}/cl-host-kit.asd";
+            src = cl-host-kit;
+          };
+          boundaryKit = ctx.cl.lispDerivation {
+            pname = "cl-boundary-kit";
+            lispSystem = "cl-boundary-kit";
+            version = ctx.cl.fromAsdSystem "${cl-tty-kit.inputs.cl-boundary-kit}/cl-boundary-kit.asd";
+            src = cl-tty-kit.inputs.cl-boundary-kit;
+            lispDependencies = [ hostKit ];
+          };
+          dateKit = ctx.cl.lispDerivation {
+            pname = "cl-date-kit";
+            lispSystem = "cl-date-kit";
+            version = ctx.cl.fromAsdSystem "${cl-tty-kit.inputs.cl-date-kit}/cl-date-kit.asd";
+            src = cl-tty-kit.inputs.cl-date-kit;
+          };
+          concurrentKit = ctx.cl.lispDerivation {
+            pname = "cl-concurrent-kit";
+            lispSystem = "cl-concurrent-kit";
+            version = ctx.cl.fromAsdSystem "${cl-tty-kit.inputs.cl-concurrent-kit}/cl-concurrent-kit.asd";
+            src = cl-tty-kit.inputs.cl-concurrent-kit;
+            lispDependencies = [
+              boundaryKit
+              dateKit
+            ];
+          };
+        in
+        [
+          (ctx.cl.fromDerivation { drv = cl-tty-kit.packages.${ctx.system}.cl-tty-kit; })
+          (ctx.cl.lispDerivation {
+            lispSystem = "cl-codec-kit";
+            version = ctx.cl.fromAsdSystem "${cl-codec-kit}/cl-codec-kit.asd";
+            src = cl-codec-kit;
+          })
+          hostKit
+          boundaryKit
+          dateKit
+          concurrentKit
+          cl-cli.packages.${ctx.system}.cl-cli
+        ];
 
       # cl-weave is a dependency of `cl-cowsay/test` only (see cl-cowsay.asd),
       # so it is a CHECK dependency: it must not enter the library's closure.
@@ -204,14 +235,15 @@
 
       # The delivered `cl-cowsay` binary: `packages.default`, `apps.default`
       # and `apps.cl-cowsay`, all three built from the same `lispDerivation`
-      # arguments as `packages.cl-cowsay`. Nothing here repeats what
-      # cl-cowsay.asd already declares -- `:build-operation "program-op"`,
-      # `:build-pathname "cl-cowsay"` and `:entry-point
-      # "cl-cowsay/cli::image-entry-point"` live in the system definition, so
-      # `(asdf:operate 'asdf:program-op "cl-cowsay")` in a REPL and `nix build`
-      # produce the same binary. See cl-weave/flake.nix for the pattern this
-      # follows.
+      # arguments as `packages.cl-cowsay`. The library system remains the
+      # package's default ASDF entry, so the executable must explicitly select
+      # the separate `cl-cowsay/cli` program system below. Its
+      # `:build-operation "program-op"`, `:build-pathname "cl-cowsay"` and
+      # `:entry-point "cl-cowsay/cli::image-entry-point"` stay authoritative in
+      # cl-cowsay.asd; this Nix selection is the bridge from the package to that
+      # system. See cl-weave/flake.nix and cl-nix-forge's org-preset example.
       executable = {
+        lispSystem = "cl-cowsay/cli";
         dynamicSpaceSize = 1024;
         installSource = true;
       };
@@ -234,7 +266,7 @@
       # PACKAGE_STANDARD.md and this repository's own refactors are done
       # through, rather than by hand-editing parentheses.
       #
-      # paredit-cli v1.4.0 declares only x86_64-linux -- "only what a gate
+      # paredit-cli v1.5.0 declares only x86_64-linux -- "only what a gate
       # verifies," by its own flake.nix, and aarch64-darwin carries no CI gate
       # here either. `lib.optional` on a `?` membership test drops it from
       # the aarch64-darwin dev shell instead of failing evaluation with
@@ -256,34 +288,68 @@
       extraOutputs =
         ctx:
         let
-          # An sb-cover HTML report over the `cl-cowsay` system alone, so
-          # `cl-cowsay/test` itself never inflates the numbers. Spelled once,
-          # as a function of `ctx`, and used for both `packages.coverage` and
-          # `checks.coverage` below, so the two attributes are literally the
-          # same derivation rather than two calls that happen to agree (see
-          # cl-prolog's flake.nix, the pattern this follows). It asserts its
-          # own report is non-empty before installing it, so no separate
-          # `test -f cover-index.html` wrapper derivation is needed.
-          #
-          # Reads below 100% on package.lisp, characters-data.lisp, and part
-          # of cli.lisp are not a test gap: sb-cover attributes coverage to
-          # code *inside* a DEFUN body, and none of those three files' low
-          # numbers come from unexercised branches -- they come from
-          # top-level, run-once-at-load forms (DEFPACKAGE; each DEFCHARACTER
-          # registration; the DEFINE-APP declaration), which sb-cover does
-          # not instrument the same way. Restructuring any of the three into
-          # a function purely to move its coverage number would trade a
-          # correct declarative shape for a contrived one, for a number sb-
-          # cover was never designed to report on. cl-nix-forge's own
-          # `mkCoverageReport` deliberately has no minimum-coverage threshold
-          # and no option to add one (see lib/batteries/coverage.nix): "the
-          # report exists to make the number visible and trending, not to
-          # block merges on a threshold nobody has agreed to yet."
+          # Exercise the delivered image, not an SBCL script or the library
+          # derivation. This catches a regression where the executable preset
+          # silently selects the library ASDF system and produces a no-op
+          # wrapper with no entry point.
+          packaged-cli = lib.getExe ctx.executable;
+
+          cliSmoke = ctx.cl.mkCommandCheck {
+            drv = ctx.package;
+            name = "cl-cowsay-cli-smoke";
+            timeoutSeconds = 30;
+            command = [
+              (lib.getExe ctx.pkgs.bash)
+              "-e"
+              "-u"
+              "-o"
+              "pipefail"
+              "-c"
+              ''
+                ${lib.escapeShellArg packaged-cli} --version > version.txt
+                ${lib.escapeShellArg packaged-cli} --help > help.txt
+                printf '%s\n' 'Hello from the packaged CLI.' | ${lib.escapeShellArg packaged-cli} > output.txt
+              ''
+            ];
+            artifacts = [
+              "version.txt"
+              "help.txt"
+              "output.txt"
+            ];
+          };
+
+          # An sb-cover HTML report with a hard 100% gate over executable
+          # `cl-cowsay` and `cl-cowsay/cli` code. cl-weave's coverage filters
+          # exclude only non-runtime declaration/data files (packages, macro
+          # and condition declarations, character/eyes/bubble data, and CLI
+          # declaration files); rendering, wrapping, and runtime handlers
+          # remain instrumented. The test entry point supplies the thresholds
+          # because `mkCoverageReport` exposes the runner, not a separate
+          # validation hook. Spelled once, as a function of
+          # `ctx`, and used for both `packages.coverage` and `checks.coverage`
+          # below, so the two attributes are literally the same derivation.
+          # It asserts its own report is non-empty before installing it.
           coverageReport = ctx.cl.mkCoverageReport {
             drv = ctx.package;
             name = "cl-cowsay-coverage";
-            systems = [ "cl-cowsay" ];
-            timeoutSeconds = 180;
+            systems = [
+              "cl-cowsay"
+              "cl-cowsay/cli"
+            ];
+            # Run the normal test package through its coverage mode. A
+            # nonzero result from cl-weave's threshold check fails this
+            # derivation and therefore both the package and check outputs.
+            entryPointText = ''
+              (asdf:load-system "cl-cowsay/test")
+              (funcall
+                (symbol-function
+                  (find-symbol "RUN-TESTS" "CL-COWSAY/TEST"))
+                :coverage t)
+            '';
+            # Instrumented SB-COVER compilation exceeds the normal test
+            # timeout on a cold Darwin store; keep coverage bounded without
+            # truncating the report before the test system finishes loading.
+            timeoutSeconds = 600;
             killAfterSeconds = 30;
           };
         in
@@ -291,6 +357,7 @@
           packages.coverage = coverageReport;
 
           checks = {
+            cli-smoke = cliSmoke;
             coverage = coverageReport;
           }
           # Structural parse gate over every Lisp source in the filtered

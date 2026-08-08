@@ -19,8 +19,8 @@ the art is copied from upstream.
   character picker
 - Bash/Zsh/Fish/PowerShell/Nushell/Elvish completion scripts
   (`cl-cowsay --completion bash`, ...)
-- A small library (`cl-cowsay:say`) behind the command line, usable on its
-  own from any SBCL program
+- A small streaming library (`cl-cowsay:write-say`) behind the command line,
+  usable from any SBCL program
 
 Full documentation is published at <https://nerima-lisp.github.io/cl-cowsay/>.
 The source for that site lives in [docs/src/](docs/src/).
@@ -30,7 +30,7 @@ The source for that site lives in [docs/src/](docs/src/).
 ```lisp
 (asdf:load-system "cl-cowsay")
 
-(format t "~A~%" (cl-cowsay:say "Hello, nerima-lisp!"))
+(cl-cowsay:write-say "Hello, nerima-lisp!" *standard-output*)
 ;;   ____________________
 ;; | Hello, nerima-lisp! |
 ;;   --------------------
@@ -51,13 +51,15 @@ cl-cowsay --think -c robot "Beep boop."
 ```nix
 # flake.nix
 inputs.cl-cowsay = {
-  url = "github:nerima-lisp/cl-cowsay/v0.1.0";
+  url = "github:nerima-lisp/cl-cowsay";
   inputs.nixpkgs.follows = "nixpkgs";
 };
 ```
 
-Note the pinned tag. Consumers inside this org must pin a release tag rather
-than follow the default branch.
+This example follows the repository's default branch, so the source can change
+between runs. For reproducible production use, replace the branch reference
+with a reviewed release tag or commit and keep the resulting `flake.lock` under
+version control.
 
 ## Documentation
 
@@ -72,12 +74,13 @@ than follow the default branch.
 ```sh
 nix develop          # SBCL with CL_SOURCE_REGISTRY already set
 nix run .#test       # run the test suite
-nix flake check      # tests + formatting + docs, the same gate CI uses
+nix flake check      # tests + coverage + formatting + docs, the CI gate
 nix fmt              # format Nix sources (treefmt)
 ```
 
 Tests live in `t/` and run under [cl-weave](https://github.com/nerima-lisp/cl-weave),
-the org's test framework.
+the org's test framework. `cl-weave` is test-only; it is not a runtime
+dependency.
 
 ## Contributing
 

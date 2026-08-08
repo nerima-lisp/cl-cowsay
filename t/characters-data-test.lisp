@@ -22,6 +22,14 @@ four (cow, cat, robot, ghost), by name.")
             :to-be-truthy))
 
   (it "renders without error for every one of them"
-    (expect (every (lambda (name) (stringp (say "hi" :character name)))
+    (expect (every (lambda (name) (stringp (render-to-string "hi" :character name)))
                    *non-original-four-characters*)
-            :to-be-truthy)))
+            :to-be-truthy))
+    (it "applies public face and message overrides to every one of them"
+    (with-soft-assertions
+      (dolist (name *non-original-four-characters*)
+        (let ((output (render-to-string "hello" :character name
+                           :eyes "^^" :tongue "U")))
+          (expect (search "hello" output) :to-be-truthy)
+          (expect (search "^^" output) :to-be-truthy)
+          (expect (search "U" output) :to-be-truthy))))))
