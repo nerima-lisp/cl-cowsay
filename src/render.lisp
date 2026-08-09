@@ -2,6 +2,12 @@
 ;;;;
 ;;;; WRITE-SAY wraps the message, then writes the bubble and filled character
 ;;;; template directly to its result stream.
+;;;;
+;;;; These definitions land in CL-COWSAY because cl-cowsay.asd's
+;;;; :AROUND-COMPILE thunk binds *PACKAGE* around every compile, not because
+;;;; of an IN-PACKAGE form here -- every file the 100% coverage gate measures
+;;;; omits that form, and src/macros.lisp records the other half of the
+;;;; convention.
 
 (defun %split-on-newlines (message)
   "Split MESSAGE into a list of lines on #\\Newline, with no width-based

@@ -13,10 +13,14 @@ process with the resulting exit code; it does not return that code to its
 caller.
 
 `image-entry-point` is the entry point used by the delivered executable. It
-first sets `*default-pathname-defaults*` from the process's current working
-directory, then calls `main`. This restores the startup working directory for a
-dumped image. Applications embedding the library should call `write-say`
-instead of these process-facing entry points.
+sets `*default-pathname-defaults*` from the process's current working
+directory, reseeds `*random-state*` from the running machine, and then calls
+`main`. The first restores the startup working directory for a dumped image.
+The second is what makes `--random` vary between process starts: a dumped
+image resumes the random state it was saved with, and this command draws from
+that state exactly once per run, so without the reseed every invocation would
+pick the same character. Applications embedding the library should call
+`write-say` instead of these process-facing entry points.
 
 ## Rendering
 
@@ -45,14 +49,26 @@ entirely -- `message` is split only on its own embedded newlines, and `width`
 is ignored for wrapping purposes (though still validated).
 
 `timeout-seconds` is a positive real wall-clock limit for the operation and
-defaults to `+default-timeout-seconds+`. A non-positive or non-real value
-signals [`invalid-timeout`](#invalid-timeout); expiry signals
+defaults to [`+default-timeout-seconds+`](#default-timeout-seconds). A
+non-positive or non-real value signals
+[`invalid-timeout`](#invalid-timeout); expiry signals
 [`operation-timeout`](#operation-timeout).
 
 Signals [`unknown-character`](#unknown-character) when `character` names no
 built-in, [`invalid-message`](#invalid-message) when `width` is not a positive
-integer, and a standard `type-error` for a non-string `message` or an
-unsupported `mode`.
+integer, and a standard `type-error` for a non-string `message`, an
+unsupported `mode`, a `stream` that is not a stream, a non-string `character`,
+or an `eyes` or `tongue` that is neither `nil` nor a string.
+
+### `+default-timeout-seconds+`
+
+```lisp
++default-timeout-seconds+  ; => 10
+```
+
+Constant holding the wall-clock second count `write-say` applies when the
+caller passes no `:timeout-seconds`, and the default of the command line's
+`--timeout`. Its value is `10`.
 
 ### `with-operation-timeout`
 
@@ -137,7 +153,8 @@ Signaled by [`write-say`](#write-say) when `width` is not a positive integer.
 ### `invalid-timeout`
 
 Signaled when `write-say` or `with-operation-timeout` receives a timeout that
-is not a positive real number.
+is not a positive real number. `invalid-timeout-seconds` reads the offending
+value back.
 
 ### `operation-timeout`
 

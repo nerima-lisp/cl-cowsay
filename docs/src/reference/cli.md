@@ -13,12 +13,13 @@ cl-cowsay [OPTIONS] [MESSAGE...]
 `MESSAGE` is one or more positional words, joined by a single space. When no
 positional words are given, `cl-cowsay` reads the message from standard input
 instead, up to 65,536 characters (`64 * 1024`; the limit is measured in
-characters). The input read and rendering operation share a positive
-wall-clock timeout, defaulting to 10 seconds. All consecutive trailing newline characters are removed (see
-[`stdin-too-large`](api.md#stdin-too-large)). `--completion` takes precedence
-over `--list`, and both modes exit without reading standard input. Otherwise,
-the normal rendering path is used; when `--random` is present, it selects the
-character instead of `--character`.
+characters -- see [`stdin-too-large`](api.md#stdin-too-large)). The input read
+and rendering operation share a positive wall-clock timeout, defaulting to 10
+seconds. Trailing newline and carriage-return characters are stripped from
+that input, in any number and any mix, so CRLF-terminated input is handled.
+`--completion` takes precedence over `--list`, and both modes exit without
+reading standard input. Otherwise, the normal rendering path is used; when
+`--random` is present, it selects the character instead of `--character`.
 
 ## Options
 
@@ -66,11 +67,25 @@ echo "piped in" | cl-cowsay               # message from standard input
 
 ## Exit codes
 
-`cl-cowsay` follows the conventional Unix split: `0` on success, and a
-non-zero [`sysexits.h`](https://man.openbsd.org/sysexits)-style code from
-`cl-cli`'s `run-app` when something goes wrong -- for example `70`
-(`EX_SOFTWARE`) when [`stdin-too-large`](api.md#stdin-too-large) is signaled,
-or a non-zero parse-error code when an option or its value is invalid (an
-unknown `--character`, a non-positive `--width`, and so on).
+`cl-cowsay` reports its outcome with a
+[`sysexits.h`](https://man.openbsd.org/sysexits)-style code from `cl-cli`'s
+`run-app`.
+
+| Exit | Name | When |
+| --- | --- | --- |
+| `0` | -- | The message rendered, or `--list`, `--completion`, `--help`, or `--version` produced its output. |
+| `64` | `EX_USAGE` | An option or its value is invalid: an unknown `--character`, a `--width` below `1`, a `--timeout` below `0.001`, an unknown `--eyes-preset`, or an unknown `--completion` shell. `cl-cli` prints its usage error followed by the help text. |
+| `65` | `EX_DATAERR` | Standard input exceeded its 65,536-character limit -- see [`stdin-too-large`](api.md#stdin-too-large). |
+| `75` | `EX_TEMPFAIL` | The operation exceeded its wall-clock `--timeout` -- see [`operation-timeout`](api.md#operation-timeout). |
+| `70` | `EX_SOFTWARE` | Any other, unexpected error. `cl-cli` prints it prefixed with `Internal error:`. |
+
+`65` and `75` are held apart from `70` because neither one is a fault in the
+program. Over-long standard input is bad input data, which is what
+`EX_DATAERR` names, and an expired timeout is a temporary failure the caller
+can retry with a larger `--timeout`, which is what `EX_TEMPFAIL` names. Both
+print the condition's own report by itself, with no `Internal error:` prefix,
+since that prefix would point a reader at the wrong cause. That leaves `70`
+meaning what it says: an error the program did not anticipate.
+
 Successful rendering, character-listing, and completion output goes to
 standard output; diagnostics and parse errors go to standard error.

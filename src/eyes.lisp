@@ -8,6 +8,13 @@
 ;;;; functions here reference +EYE-PRESETS+ directly, so DATA loads first
 ;;;; here instead, to give the compiler a DEFVAR for it to see before
 ;;;; it sees a reference.
+;;;;
+;;;; The absence of an IN-PACKAGE form here is deliberate: cl-cowsay.asd
+;;;; binds *PACKAGE* to CL-COWSAY around every compile through
+;;;; :AROUND-COMPILE, so these definitions land in CL-COWSAY without one.
+;;;; Note also that every source file that does carry an IN-PACKAGE form is
+;;;; on the coverage gate's exclusion list in t/package.lisp, while every
+;;;; file the gate measures -- this one included -- omits it.
 
 (defun list-eye-presets ()
   "Return every eyes-preset name, in the fixed order +EYE-PRESETS+ lists

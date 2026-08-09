@@ -5,6 +5,12 @@
 ;;;; templating engine. Every built-in character (src/characters-data.lisp)
 ;;;; is a list of plain strings that may contain ${eyes}, ${tongue}, and/or
 ;;;; ${thoughts}; FILL-TEMPLATE-LINE replaces each with caller-supplied text.
+;;;;
+;;;; These definitions land in CL-COWSAY because cl-cowsay.asd's
+;;;; :AROUND-COMPILE thunk binds *PACKAGE* around every compile, not because
+;;;; of an IN-PACKAGE form here -- every file the 100% coverage gate measures
+;;;; omits that form, and src/macros.lisp records the other half of the
+;;;; convention.
 
 (defun %replace-all (string old new)
   "Return STRING with every non-overlapping occurrence of OLD replaced by NEW.

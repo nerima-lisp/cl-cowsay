@@ -27,16 +27,173 @@ jobs:
       # Enforces the org invariant "git tag == .asd :version" at the only point
       # where it can still be corrected cheaply. Without this gate the two drift
       # silently.
+      #
+      # The .asd declares one system per artifact (library, cli, test) and each
+      # carries its own :version, so checking only the first would let a release
+      # ship a binary and a test system stamped with the previous version and
+      # still go green. Disagreement among the declared versions is therefore
+      # its own failure, reported separately from a tag mismatch, because the
+      # two need different fixes. Both are checked before the comparison, and an
+      # extraction that yields nothing is fatal rather than empty: an empty
+      # version compared against an empty tag would pass vacuously, which is the
+      # one outcome a release gate must never produce.
+      #
+      # Deduplicating the extracted versions catches disagreement but is blind
+      # to omission, which is the same failure spelled differently: delete the
+      # :version from one defsystem and the remaining two still collapse to a
+      # single distinct value that matches the tag, so the gate would go green
+      # over a system shipped with no declared version. Counting the :version
+      # declarations against the defsystem forms is what closes that, and it is
+      # counted inside perl rather than through `wc -l`, which cannot tell no
+      # output from one unterminated line, or `grep -c`, whose exit 1 on zero
+      # matches is fatal under `set -e` exactly when the count matters most.
+      #
+      # Every count here is read out of a text scan, so every one of them has to
+      # survive ordinary reformatting of the .asd, and they have to fail the
+      # same way: none can go green over a real problem, and none should go red
+      # over a line that is merely text. An undercount of defsystem forms is a
+      # false red, which is safe but leaves a maintainer staring at two numbers
+      # that both look right; an OVERcount of :version forms is worse, because
+      # it trips the same count-mismatch branch and the message then tells the
+      # maintainer to add a :version that is already there. All the extractions
+      # therefore share the scanner defined below, which is what keeps a
+      # `(defsystem ...)` or a `:version "..."` written at column 0 inside a
+      # :long-description, or inside a stanza commented out with `#|...|#`, from
+      # being read as a declaration.
+      #
+      # The defsystem pattern additionally tolerates leading whitespace, a space
+      # after the open paren, any package qualifier (`asdf:defsystem`,
+      # `asdf::defsystem`), and any case, because the standard reader upcases
+      # symbols and `DEFSYSTEM` is the same operator as `defsystem`. Its
+      # trailing lookahead rejects a longer symbol that merely starts with those
+      # letters -- `defsystem-depends-on`, `defsystems`, `defsystem:accessor`
+      # were all counted by the earlier `\b` spelling.
+      #
+      # The :version patterns reuse that same head as an optional prefix, so
+      # `(defsystem "a" :version "1.0.0"` written on one line is read as a
+      # declaration. Anchoring them at `^\s*:version` instead -- which is what
+      # they did before -- made the pretty-printer's line breaks load-bearing:
+      # joining the head and the keyword onto one line dropped the :version from
+      # the count while the defsystem still counted, which tripped the
+      # count-mismatch branch and told the maintainer to add a :version that was
+      # already there. A false red with a misleading diagnosis, and the exact
+      # failure the paragraph above claims to have closed.
+      #
+      # The patterns deliberately still do NOT match: a reader-conditional
+      # prefix (`#+sbcl (defsystem ...)`, `#+(or) (defsystem ...)`), because
+      # whether that form is read at all depends on *features* at read time and
+      # a text scanner cannot know which answer is right -- unmatched keeps the
+      # gate failing closed; a second defsystem opened on a line that already
+      # has one, which counts once; a system declared through a macro or `#.`
+      # rather than a literal `defsystem` head; a :version pushed away from the
+      # head by another keyword (`(defsystem "a" :license "MIT" :version ...`);
+      # and a same-line :version whose system name is a quoted string containing
+      # spaces, since the head consumes exactly one whitespace-delimited name.
+      # Every one of those undercounts, and an undercount is a red gate.
       - name: Verify tag matches .asd version
         env:
           PACKAGE: cl-cowsay
         run: |
           set -euo pipefail
-          asd_version="$(sed -n 's/^[[:space:]]*:version "\([^"]*\)".*/\1/p' "$PACKAGE.asd" | head -n1)"
-          tag_version="${GITHUB_REF_NAME#v}"
-          echo "asd=$asd_version tag=$tag_version"
-          if [[ "$asd_version" != "$tag_version" ]]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match $PACKAGE.asd version $asd_version" >&2
+          asd_file="$PACKAGE.asd"
+          if [[ ! -f "$asd_file" ]]; then
+            echo "::error::$asd_file does not exist; the tag cannot be checked against any declared :version" >&2
+            exit 1
+          fi
+          # One walk of the file produces all three readings -- the :version
+          # total, the defsystem total, and the distinct versions in file order
+          # -- so their guards cannot drift apart. A guard applied to one
+          # reading and not its sibling is the failure this closes, and it is
+          # worse in the :version direction: an inflated total trips the
+          # count-mismatch branch below, whose message then tells the maintainer
+          # to add a :version that is already there.
+          #
+          # The scanner carries two pieces of state across lines: whether the
+          # next line starts inside a string literal ($q), and how deep it is
+          # inside a `#|...|#` block comment ($b). A line starting inside either
+          # is text, not a declaration, and is read by neither pattern -- that
+          # is what keeps a `:version "..."` or a `(defsystem ...)` written at
+          # column 0 inside a :long-description, or a whole stanza commented out
+          # with `#|...|#`, from being counted. A `;` outside both ends the line,
+          # so a quote in a `;;;` comment cannot flip the parity; `\"` and the
+          # character literal `#\"` are consumed as escape pairs for the same
+          # reason; and a quote inside a block comment does not flip it at all.
+          #
+          # The two :version patterns differ on purpose and both are kept: the
+          # total counts an opening quote, so a stanza whose :version is
+          # malformed still registers as present, while the extractor requires a
+          # closing quote before it will believe a value. The gap between the
+          # two is now reported, because deduplication hides it and the result
+          # was a green gate over an unreadable file: three systems all
+          # declaring "1.0.0" with the last closing quote missing collapse to
+          # one distinct value that matches the tag, and the unterminated string
+          # then swallows every following line so the :version and defsystem
+          # totals agree as well. Counting the terminated extractions separately
+          # is what closes that. The extractor's pattern is the total's pattern
+          # plus a closing quote, so the terminated count can never exceed the
+          # total, and any gap at all means an unterminated value.
+          #
+          # Output is fixed-shape so the shell needs no second scan: line 1 is
+          # the :version total, line 2 the defsystem total, line 3 the
+          # terminated :version total, and every line after that is one distinct
+          # version in file order. The END block prints all three numbers even
+          # when nothing matched, so an .asd declaring nothing is diagnosed
+          # below by name rather than by a pipeline failure under `set -e`.
+          scan_output="$(perl -ne '
+            my $head = qr{\(\s*(?:[A-Za-z0-9_+.-]+::?)?defsystem(?![-:\w])}i;
+            if (!$q && !$b) {
+              $vc++ if /^\s*(?:$head\s+\S+\s+)?:version\s+"/;
+              if (/^\s*(?:$head\s+\S+\s+)?:version\s+"([^"]*)"/) {
+                $ec++;
+                push @versions, $1 unless $seen{$1}++;
+              }
+              $dc++ if /^\s*$head/;
+            }
+            while (m{(\\.|\#\||\|\#|[";])}g) {
+              my $t = $1;
+              if ($b) { $b++ if $t eq q{#|}; $b-- if $t eq q{|#}; next }
+              next if length($t) > 1 && $t ne q{#|};
+              if ($t eq q{"}) { $q = !$q; next }
+              next if $q;
+              if ($t eq q{#|}) { $b++; next }
+              last;
+            }
+            END { print 0 + $vc, "\n", 0 + $dc, "\n", 0 + $ec, "\n", map { "$_\n" } @versions }' "$asd_file")"
+          mapfile -t scan_lines <<< "$scan_output"
+          version_count="${scan_lines[0]}"
+          defsystem_count="${scan_lines[1]}"
+          terminated_count="${scan_lines[2]}"
+          asd_version_list=("${scan_lines[@]:3}")
+          asd_versions="$(printf '%s\n' "${asd_version_list[@]}")"
+          tag_version="${GITHUB_REF_NAME:-}"
+          tag_version="${tag_version#v}"
+          echo "asd={${asd_versions//$'\n'/, }} versions=$version_count defsystems=$defsystem_count terminated=$terminated_count tag=$tag_version"
+          # Checked first: an unterminated :version string makes every reading
+          # below unreliable, including the two counts it silently brings back
+          # into agreement, so no other branch may claim to diagnose the file
+          # until this one has cleared.
+          if (( version_count != terminated_count )); then
+            echo "::error::$asd_file has $(( version_count - terminated_count )) :version declaration(s) whose value is missing its closing quote; the unterminated string runs on and hides every later form from the scan, so no count below can be trusted. Fix the quoting and re-tag" >&2
+            exit 1
+          fi
+          if [[ -z "$asd_versions" ]]; then
+            echo "::error::$asd_file declares no :version at all; every defsystem form must carry one matching the release tag" >&2
+            exit 1
+          fi
+          if (( version_count != defsystem_count )); then
+            echo "::error::$asd_file declares $version_count :version form(s) across $defsystem_count defsystem form(s); each defsystem must carry its own :version, so a system is about to ship unversioned. Add the missing :version \"$tag_version\" and re-tag" >&2
+            exit 1
+          fi
+          if (( ${#asd_version_list[@]} > 1 )); then
+            echo "::error::$asd_file declares ${#asd_version_list[@]} different :version values (${asd_versions//$'\n'/, }); every defsystem form must declare the same version. Set them all to $tag_version and re-tag" >&2
+            exit 1
+          fi
+          if [[ -z "$tag_version" ]]; then
+            echo "::error::GITHUB_REF_NAME is empty, so there is no tag to check $asd_file version ${asd_version_list[0]} against" >&2
+            exit 1
+          fi
+          if [[ "${asd_version_list[0]}" != "$tag_version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match $asd_file version ${asd_version_list[0]}" >&2
             exit 1
           fi
 

@@ -14,15 +14,15 @@
                 #:eyes-preset-string
                 #:+default-timeout-seconds+
                 #:with-operation-timeout
-                #:cl-cowsay-error
-                #:stdin-too-large
-                #:stdin-too-large-limit)
+                #:operation-timeout
+                #:stdin-too-large)
   (:import-from #:cl-cli
                 #:define-app
                 #:run-app
                 #:option-value
                 #:positional-value
                 #:invocation-stdout
+                #:invocation-stderr
                 #:current-process-argv
                 #:render-completion)
   (:import-from #:host-kit

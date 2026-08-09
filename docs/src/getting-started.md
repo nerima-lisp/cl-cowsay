@@ -43,9 +43,9 @@ them (for example under `~/common-lisp/`), then load the library system:
 ```
 
 ```text
-  ____________________
+ _____________________
 | Hello, nerima-lisp! |
-  --------------------
+ ---------------------
         \   ^__^
          \  (oo)
             (__)
