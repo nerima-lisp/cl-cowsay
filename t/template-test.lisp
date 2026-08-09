@@ -76,7 +76,13 @@
                         stream "oo" "U" "\\"))
                      "\\ooU")
             :to-be-truthy))
-  (it "writes a literal prefix before a placeholder" (expect (string= (with-output-to-string (stream) (cl-cowsay::%write-compiled-template-line (cl-cowsay::%compile-template-line "prefix${eyes}") stream "oo" "U" "x")) "prefixoo") :to-be-truthy))
+  (it "writes a literal prefix before a placeholder"
+    (expect (string= (with-output-to-string (stream)
+                       (cl-cowsay::%write-compiled-template-line
+                        (cl-cowsay::%compile-template-line "prefix${eyes}")
+                        stream "oo" "U" "x"))
+                     "prefixoo")
+            :to-be-truthy))
 
   (it "rejects malformed compiled chunks"
     (signals type-error

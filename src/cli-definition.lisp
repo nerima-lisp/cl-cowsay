@@ -3,7 +3,13 @@
 ;;;; Declarative cl-cli application definition. Runtime handlers are in
 ;;;; src/cli.lisp and resource limits are in src/cli-configuration.lisp.
 (in-package #:cl-cowsay/cli)
-(defun %cowsay-version () "Return the CL-COWSAY ASDF version." (let ((system (asdf:find-system "cl-cowsay" nil))) (if system (asdf:component-version system) "0.0.0")))
+
+(defun %cowsay-version ()
+  "Return the CL-COWSAY ASDF version."
+  (let ((system (asdf:find-system "cl-cowsay" nil)))
+    (if system
+        (asdf:component-version system)
+        "0.0.0")))
 
 (define-app
  *cowsay-app*
@@ -18,7 +24,7 @@
 input when none are given -- into a speech or thought bubble drawn above a
 built-in ASCII-art character."
   :handler
-  (function %cowsay-handler))
+  #'%cowsay-handler)
  (:option
   "character"
   :short

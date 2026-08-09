@@ -2,6 +2,13 @@
 ;;;;
 ;;;; Runtime bubble rendering operations. Preallocated character runs are
 ;;;; defined separately in src/bubble-data.lisp.
+;;;;
+;;;; The absence of an IN-PACKAGE form here is deliberate: cl-cowsay.asd
+;;;; binds *PACKAGE* to CL-COWSAY around every compile through
+;;;; :AROUND-COMPILE, so these definitions land in CL-COWSAY without one.
+;;;; Note also that every source file that does carry an IN-PACKAGE form is
+;;;; on the coverage gate's exclusion list in t/package.lisp, while every
+;;;; file the gate measures -- this one included -- omits it.
 
 (defun %write-repeated-bubble-character (character count stream)
   "Write CHARACTER (one of #\\Space, #\\_, or #\\-) COUNT times to STREAM, in

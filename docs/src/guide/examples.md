@@ -144,10 +144,20 @@ fortune | cl-cowsay -r --think
                      :eyes (cl-cowsay:eyes-preset-string "borg"))
 (cl-cowsay:write-say "kept on one line no matter how long" *standard-output* :no-wrap t)
 
-;; Handle every error this library signals with one clause.
+;; Handle every error this library signals with one clause: they all derive
+;; from cl-cowsay-error, and each one reports itself under ~A.
+(handler-case (cl-cowsay:write-say "hi" *standard-output* :character "not-a-real-character")
+  (cl-cowsay:cl-cowsay-error (c)
+    (format t "cl-cowsay failed: ~A~%" c)))
+
+;; A reader such as unknown-character-name belongs to one subtype, not to the
+;; base condition, so asking for it means a clause on that subtype. handler-case
+;; takes the first matching clause, so the specific one goes above the catch-all.
 (handler-case (cl-cowsay:write-say "hi" *standard-output* :character "not-a-real-character")
   (cl-cowsay:unknown-character (c)
-    (format t "no such character: ~A~%" (cl-cowsay:unknown-character-name c))))
+    (format t "no such character: ~A~%" (cl-cowsay:unknown-character-name c)))
+  (cl-cowsay:cl-cowsay-error (c)
+    (format t "cl-cowsay failed: ~A~%" c)))
 
 ;; Enumerate what's available.
 (cl-cowsay:list-characters)   ; => ("alien" "bat" "bear" ... "wolf")

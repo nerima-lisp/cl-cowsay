@@ -2,6 +2,12 @@
 ;;;;
 ;;;; Runtime operations for the character registry. The data structures and
 ;;;; registry storage are defined in src/characters-definitions.lisp.
+;;;;
+;;;; These definitions land in CL-COWSAY because cl-cowsay.asd's
+;;;; :AROUND-COMPILE thunk binds *PACKAGE* around every compile, not because
+;;;; of an IN-PACKAGE form here -- every file the 100% coverage gate measures
+;;;; omits that form, and src/macros.lisp records the other half of the
+;;;; convention.
 
 (defun register-character (name lines)
   "Register LINES (a list of template strings) under NAME (case-insensitive).

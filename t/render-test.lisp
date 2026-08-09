@@ -44,7 +44,40 @@ b" ("a" "" "b"))
 
   (it "defaults to the \"cow\" character"
     (expect (string= (render-to-string "hi") (render-to-string "hi" :character "cow")) :to-be-truthy))
-  (it "uses WRITE-SAY defaults when no keyword overrides are supplied" (let ((expected (render-to-string "hi"))) (expect (string= expected (with-output-to-string (stream) (write-say "hi" stream))) :to-be-truthy)))
+  (it "uses WRITE-SAY's documented defaults when no keyword overrides are supplied"
+    ;; Each default is asserted through an observable consequence of it. What
+    ;; this case must NOT do is compare (RENDER-TO-STRING "hi") against
+    ;; (WITH-OUTPUT-TO-STRING (S) (WRITE-SAY "hi" S)): RENDER-TO-STRING is
+    ;; defined in t/package.lisp as exactly that APPLY, so with no keys the two
+    ;; sides are the same expression and no implementation of WRITE-SAY could
+    ;; make them differ.
+    (let* ((short (make-string 35 :initial-element #\a))
+           (long (format nil "~A ~A" short short))
+           (short-render (render-to-string short))
+           (long-render (render-to-string long)))
+      (with-soft-assertions
+        ;; :CHARACTER defaults to "cow" -- its art, not its name, since the art
+        ;; never spells the name out.
+        (expect (search "^__^" short-render) :to-be-truthy)
+        (expect (search "(oo)" short-render) :to-be-truthy)
+        (expect (search "u  u" short-render) :to-be-truthy)
+        ;; :MODE defaults to :SPEECH -- "|" sides and a "\" connector, and
+        ;; specifically not the ":" sides :THOUGHT would draw.
+        (expect (find #\| short-render) :to-be-truthy)
+        (expect (not (find #\: short-render)) :to-be-truthy)
+        (expect (find #\\ short-render) :to-be-truthy)
+        ;; :WIDTH defaults to 40, so a 35-character run stays on one content row
+        ;; (two "|") while 35 + 1 + 35 breaks into two (four "|"). This pair is
+        ;; what pins the number itself: a default of 80 would put LONG on a
+        ;; single row, and a default of 20 would split SHORT.
+        (expect (= (count #\| short-render) 2) :to-be-truthy)
+        (expect (= (count #\| long-render) 4) :to-be-truthy)
+        ;; The top rule is sized to the content, not to :WIDTH: one space, then
+        ;; the message length plus its two padding spaces, in underscores.
+        (expect (string= (subseq short-render 0 (+ 3 (length short)))
+                         (format nil " ~A" (make-string (+ 2 (length short))
+                                                        :initial-element #\_)))
+                :to-be-truthy))))
 
   (it "is case-insensitive about the character name"
     (expect (string= (render-to-string "hi" :character "COW") (render-to-string "hi" :character "cow"))
@@ -236,4 +269,11 @@ b" ("a" "" "b"))
         (expect-match (format nil "~C~C a ~C~C" cjk combining cjk combining) 3)
         (expect-match (format nil "~%~C~%~%" cjk) 1 :thought)))))
 
-(describe "write-say timeouts" (it "accepts the timeout keyword at the public rendering boundary" (expect (plusp (length (render-to-string "hi" :timeout-seconds 1))) :to-be-truthy)) (it "rejects an invalid timeout at the public rendering boundary" (signals invalid-timeout (write-say "hi" (make-string-output-stream) :timeout-seconds 0))))
+(describe "write-say timeouts"
+  (it "accepts the timeout keyword at the public rendering boundary"
+    (expect (plusp (length (render-to-string "hi" :timeout-seconds 1)))
+            :to-be-truthy))
+
+  (it "rejects an invalid timeout at the public rendering boundary"
+    (signals invalid-timeout
+      (write-say "hi" (make-string-output-stream) :timeout-seconds 0))))
