@@ -18,7 +18,8 @@ nix run github:nerima-lisp/cl-cowsay -- "Hello, nerima-lisp!"
 # Or from a checkout:
 nix build .#default     # build the delivered executable package
 nix run .               # run the delivered binary
-nix flake check         # tests + coverage + formatting + docs, the CI gate
+nix run .#test          # run the test suite
+nix flake check --print-build-logs  # tests + coverage + formatting + docs, the CI gate
 nix develop              # SBCL with CL_SOURCE_REGISTRY already set
 ```
 
