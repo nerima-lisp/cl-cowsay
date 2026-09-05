@@ -1,22 +1,3 @@
-;;;; src/wrap.lisp
-;;;;
-;;;; The word-wrapping WRITE-SAY (src/render.lisp) drives, split out of
-;;;; render.lisp so the layout walk sits beside its own helpers rather than
-;;;; inside the rendering entry point. Two paths produce the same wrapping:
-;;;; an ASCII fast path, taken only when the message is plain ASCII AND
-;;;; carries no embedded newline, which may then assume display width equals
-;;;; character count and so needs none of CL-TTY-KIT's per-character
-;;;; lookups; and a Unicode-aware walk (%CALL-WITH-WRAPPED-CHUNKS) that
-;;;; handles every message failing either condition. Either path
-;;;; measures the bubble's width first and writes the bubble second; on the
-;;;; Unicode path both passes run through that single walk, so the wrapping
-;;;; decision itself is written once.
-;;;;
-;;;; These definitions land in CL-COWSAY because cl-cowsay.asd's
-;;;; :AROUND-COMPILE thunk binds *PACKAGE* around every compile, not because
-;;;; of an IN-PACKAGE form here -- every file the 100% coverage gate measures
-;;;; omits that form, and src/macros.lisp records the other half of the
-;;;; convention.
 
 (defun %ascii-wrapped-maximum-width (message width)
   "Return (VALUES MAXIMUM-WIDTH T) when MESSAGE is plain ASCII with no

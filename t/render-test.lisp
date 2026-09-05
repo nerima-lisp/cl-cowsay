@@ -1,4 +1,3 @@
-;;;; t/render-test.lisp
 
 (in-package #:cl-cowsay/test)
 
@@ -17,15 +16,6 @@ b" ("a" "" "b"))
     (expect (equal (cl-cowsay::%split-on-newlines message) expected) :to-be-truthy)))
 
 (describe "write-say"
-  ;; A snapshot, not piecemeal SEARCH/FIND assertions, is what actually
-  ;; guards the bubble's exact layout -- box width, connector placement,
-  ;; and the character art's alignment all move together on any change to
-  ;; %WRITE-BUBBLE, FILL-TEMPLATE-LINE, or the "cow" character data, and a
-  ;; partial match would miss a regression in any of the whitespace
-  ;; between them. :TO-MATCH-INLINE-SNAPSHOT compares against
-  ;; (WRITE-TO-STRING ACTUAL :ESCAPE T :READABLY NIL), so the literal below
-  ;; is the rendered value re-printed with escaping -- quote marks and each
-  ;; backslash doubled -- not the raw rendered text.
   (it "renders \"hi\" with the default cow character exactly"
     (expect (render-to-string "hi")
             :to-match-inline-snapshot
@@ -45,35 +35,19 @@ b" ("a" "" "b"))
   (it "defaults to the \"cow\" character"
     (expect (string= (render-to-string "hi") (render-to-string "hi" :character "cow")) :to-be-truthy))
   (it "uses WRITE-SAY's documented defaults when no keyword overrides are supplied"
-    ;; Each default is asserted through an observable consequence of it. What
-    ;; this case must NOT do is compare (RENDER-TO-STRING "hi") against
-    ;; (WITH-OUTPUT-TO-STRING (S) (WRITE-SAY "hi" S)): RENDER-TO-STRING is
-    ;; defined in t/package.lisp as exactly that APPLY, so with no keys the two
-    ;; sides are the same expression and no implementation of WRITE-SAY could
-    ;; make them differ.
     (let* ((short (make-string 35 :initial-element #\a))
            (long (format nil "~A ~A" short short))
            (short-render (render-to-string short))
            (long-render (render-to-string long)))
       (with-soft-assertions
-        ;; :CHARACTER defaults to "cow" -- its art, not its name, since the art
-        ;; never spells the name out.
         (expect (search "^__^" short-render) :to-be-truthy)
         (expect (search "(oo)" short-render) :to-be-truthy)
         (expect (search "u  u" short-render) :to-be-truthy)
-        ;; :MODE defaults to :SPEECH -- "|" sides and a "\" connector, and
-        ;; specifically not the ":" sides :THOUGHT would draw.
         (expect (find #\| short-render) :to-be-truthy)
         (expect (not (find #\: short-render)) :to-be-truthy)
         (expect (find #\\ short-render) :to-be-truthy)
-        ;; :WIDTH defaults to 40, so a 35-character run stays on one content row
-        ;; (two "|") while 35 + 1 + 35 breaks into two (four "|"). This pair is
-        ;; what pins the number itself: a default of 80 would put LONG on a
-        ;; single row, and a default of 20 would split SHORT.
         (expect (= (count #\| short-render) 2) :to-be-truthy)
         (expect (= (count #\| long-render) 4) :to-be-truthy)
-        ;; The top rule is sized to the content, not to :WIDTH: one space, then
-        ;; the message length plus its two padding spaces, in underscores.
         (expect (string= (subseq short-render 0 (+ 3 (length short)))
                          (format nil " ~A" (make-string (+ 2 (length short))
                                                         :initial-element #\_)))
@@ -110,8 +84,6 @@ b" ("a" "" "b"))
             do (push (subseq result start (or newline (length result))) lines)
             while newline
             do (setf start (1+ newline)))
-      ;; No line of output may exceed the bubble's own generated width, so a
-      ;; wrapped word cannot leak an 80-character run into a single line.
       (expect (every (lambda (line) (<= (length line) 24)) lines) :to-be-truthy)))
 
   (it "honors embedded newlines in a multi-line message as forced breaks"
@@ -138,9 +110,6 @@ b" ("a" "" "b"))
       (expect (find #\: (render-to-string "hi" :mode :thought)) :to-be-truthy)))
 
   (it "keeps a message on a single bubble line when :no-wrap is true, even past width"
-    ;; Exactly one content row means exactly two "|" characters in the whole
-    ;; rendering (the row's left and right sides) -- a wrapped message would
-    ;; produce more than one content row and so more than two.
     (let* ((long (make-string 60 :initial-element #\a))
            (result (render-to-string long :no-wrap t :width 10)))
       (expect (= (count #\| result) 2) :to-be-truthy)))
@@ -156,11 +125,6 @@ b" ("a" "" "b"))
 
   (it "renders empty paragraphs through the Unicode wrapper"
     (expect (= (count #\| (render-to-string (format nil "~%"))) 4) :to-be-truthy))
-
-  ;; A fixed, always-valid :character and :width means the only two
-  ;; conditions WRITE-SAY ever signals (UNKNOWN-CHARACTER, INVALID-MESSAGE) are
-  ;; both impossible here -- so a MESSAGE that makes it crash some other
-  ;; way, on any generated string at all, is a real bug in WRITE-SAY itself.
   (it-fuzz "renders non-empty output with the basic cow art"
       ((message (gen-string :min-length 0 :max-length 200)))
       (:trials 200 :timeout-per-trial 2)

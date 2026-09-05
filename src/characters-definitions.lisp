@@ -1,8 +1,3 @@
-;;;; src/characters-definitions.lisp
-;;;;
-;;;; Character representation and registry state. The runtime registry
-;;;; operations live in src/characters.lisp; built-in character data lives in
-;;;; src/characters-data.lisp.
 
 (in-package #:cl-cowsay)
 

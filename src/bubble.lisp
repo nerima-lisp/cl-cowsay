@@ -1,19 +1,6 @@
-;;;; src/bubble.lisp
-;;;;
-;;;; Runtime bubble rendering operations. Preallocated character runs are
-;;;; defined separately in src/bubble-data.lisp.
-;;;;
-;;;; The absence of an IN-PACKAGE form here is deliberate: cl-cowsay.asd
-;;;; binds *PACKAGE* to CL-COWSAY around every compile through
-;;;; :AROUND-COMPILE, so these definitions land in CL-COWSAY without one.
-;;;; Note also that every source file that does carry an IN-PACKAGE form is
-;;;; on the coverage gate's exclusion list in t/package.lisp, while every
-;;;; file the gate measures -- this one included -- omits it.
 
 (defun %write-repeated-bubble-character (character count stream)
-  "Write CHARACTER (one of #\\Space, #\\_, or #\\-) COUNT times to STREAM, in
-slices off the matching preallocated chunk above rather than building a
-fresh string of length COUNT."
+  "Write CHARACTER (one of #\\Space, #\\_, or #\\-) COUNT times to STREAM."
   (let ((chunk (ecase character
                  (#\Space +bubble-space-chunk+)
                  (#\_ +bubble-underscore-chunk+)
@@ -42,9 +29,7 @@ already-known display width; PADDING is a run of spaces at least
   (write-char side stream))
 
 (defun %write-bubble (lines mode stream)
-  "Write the multi-line bubble for LINES (already wrapped, one entry per
-row) directly to STREAM. This is the canonical streaming bubble renderer
-used by the library and its tests."
+  "Write the multi-line bubble for already-wrapped LINES to STREAM."
   (let* ((content (or lines (list "")))
          (widths (mapcar #'cl-tty-kit:string-width content))
          (width (reduce #'max widths :initial-value 0))
@@ -59,9 +44,7 @@ used by the library and its tests."
     (%write-bubble-rule-character #\- width stream)))
 
 (defun %bubble-side-character (mode)
-  "Return the single character used on both sides of every bubble content
-line for MODE (:SPEECH or :THOUGHT). The two modes render visibly differently
-so a reader can tell which was used without looking at the character art."
+  "Return MODE's bubble side character."
   (ecase mode
     (:speech #\|)
     (:thought #\:)))

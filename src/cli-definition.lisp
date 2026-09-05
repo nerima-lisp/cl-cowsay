@@ -1,7 +1,3 @@
-;;;; src/cli-definition.lisp
-;;;;
-;;;; Declarative cl-cli application definition. Runtime handlers are in
-;;;; src/cli.lisp and resource limits are in src/cli-configuration.lisp.
 (in-package #:cl-cowsay/cli)
 
 (defun %cowsay-version ()

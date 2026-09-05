@@ -1,9 +1,3 @@
-;;;; t/template-test.lisp
-;;;;
-;;;; FILL-TEMPLATE-LINE and %REPLACE-ALL are internal (src/template.lisp),
-;;;; accessed here via CL-COWSAY:: -- they are not part of the public API,
-;;;; but the substitution scheme is exactly what every built-in character
-;;;; relies on, so it gets its own direct coverage.
 
 (in-package #:cl-cowsay/test)
 
@@ -45,11 +39,6 @@
     (expect (string= (cl-cowsay::fill-template-line "${eyes}-${eyes}" :eyes "x")
                      "x-x")
             :to-be-truthy))
-
-  ;; Values drawn only from "abc" can never contain "${", so none of them
-  ;; can accidentally complete a placeholder token FILL-TEMPLATE-LINE has
-  ;; not substituted yet; the result is exactly the template with each slot
-  ;; replaced, for any generated combination.
   (it-property "substitutes all three placeholders for arbitrary non-overlapping values"
       ((eyes (gen-string :min-length 0 :max-length 6 :alphabet "abc"))
        (tongue (gen-string :min-length 0 :max-length 6 :alphabet "abc"))
@@ -93,10 +82,6 @@
         (cl-cowsay::%write-compiled-template-line '(:unknown) stream "oo" "U" "\\")))))
 
 (describe "%replace-all"
-  ;; The empty-OLD row is the one worth calling out on its own: an empty
-  ;; search string would match at every position and never advance,
-  ;; looping forever, so %REPLACE-ALL treats it as a no-op instead of
-  ;; scanning. The "does not occur" row is the ordinary early-exit case.
   (it-each (("aXbXc" "X" "-" "a-b-c")
             ("abc" "" "-" "abc")
             ("abc" "z" "-" "abc"))
@@ -104,11 +89,6 @@
       (string old new expected)
     (expect (string= (cl-cowsay::%replace-all string old new) expected) :to-be-truthy))
 
-  ;; Two generated-input properties, each avoiding the one subtlety a
-  ;; single left-to-right non-overlapping scan has: replacing "ab" with ""
-  ;; in "aabb" leaves "a"+"b", which happens to spell "ab" again. Disjoint
-  ;; alphabets between STRING and OLD/NEW below sidestep that case entirely
-  ;; rather than asserting something only sometimes true.
   (it-property "replacing OLD with itself is always a no-op"
       ((string (gen-string :min-length 0 :max-length 40 :alphabet "abcXY"))
        (old (gen-string :min-length 1 :max-length 5 :alphabet "abcXY")))

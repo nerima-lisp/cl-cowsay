@@ -1,4 +1,3 @@
-;;;; t/macros-test.lisp
 
 (in-package #:cl-cowsay/test)
 
@@ -25,11 +24,6 @@
               :to-be-truthy))))
 
 (describe "defcharacter"
-  ;; Registers a throwaway character under a name no built-in uses. The
-  ;; ${eyes} placeholder is included on purpose: LIST-CHARACTERS is a single
-  ;; shared registry across the whole test run, so t/characters-test.lisp's
-  ;; "every character references ${eyes}" case would otherwise fail against
-  ;; this one too.
   (it "registers the character under the downcased symbol name"
     (cl-cowsay::defcharacter %macros-test-char "(${eyes})" "second line")
     (with-soft-assertions

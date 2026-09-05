@@ -1,4 +1,3 @@
-;;;; t/bubble-test.lisp
 
 (in-package #:cl-cowsay/test)
 
@@ -42,13 +41,7 @@
 
   (it "pads every content row to the width of the longest input line"
     (let ((lines (%materialize-streaming-bubble-lines (list "a" "much longer line") :speech)))
-      ;; Both content rows (indices 1 and 2) must end up the same length.
       (expect (= (length (second lines)) (length (third lines))) :to-be-truthy)))
-
-  ;; Generalizes the row-count and equal-padding cases above across
-  ;; arbitrary generated line lists: LINES rows plus a top and bottom rule
-  ;; (or exactly 3 for an empty LINES), and every content row padded to one
-  ;; shared width.
   (it-property "always produces (length lines)+2 rows with equal-width content rows"
       ((lines (gen-list (gen-string :min-length 0 :max-length 12 :alphabet "abc")
                         :min-length 0 :max-length 6))

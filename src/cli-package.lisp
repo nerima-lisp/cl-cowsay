@@ -1,9 +1,3 @@
-;;;; src/cli-package.lisp
-;;;;
-;;;; The command-line package is loaded only by CL-COWSAY/CLI. Keeping this
-;;;; DEFPACKAGE in the executable system means the rendering library does not
-;;;; load CL-CLI or CL-HOST-KIT just to provide WRITE-SAY.
-
 (defpackage #:cl-cowsay/cli
   (:documentation "The `cl-cowsay` command-line front end over CL-COWSAY.")
   (:use #:cl)

@@ -1,4 +1,3 @@
-;;;; t/eyes-test.lisp
 
 (in-package #:cl-cowsay/test)
 

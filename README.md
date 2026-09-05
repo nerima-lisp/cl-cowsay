@@ -85,8 +85,8 @@ dependency.
 `nix flake check` is more than tests and formatting. Each check in `flake.nix`
 is its own derivation, so they build in parallel and any one of them can be run
 alone with `nix build .#checks.<system>.<name>`. `nix flake show` lists the ones
-your system actually has -- a check whose tooling is not published for your
-platform is simply absent there -- so trust that listing over this one:
+your system actually has; checks unavailable on the platform do not appear
+there:
 
 - `default` -- the `t/` suite.
 - `cli-smoke` -- runs the delivered binary: `--version`, `--help`, a piped
@@ -121,10 +121,8 @@ state the character count. In each of them it checks
   in the API reference, each of which must match `--list` exactly, as a set.
 
 When it fails, the message names the assertion (`G1` through `G10`) and prints
-the disagreement. Usually the fix is to update the document. If a document
-legitimately gains or loses a mention of the count, update the pinned
-expectation in `flake.nix` in the same change; the gate is deliberately built so
-that going quiet is a failure rather than a silent pass.
+the disagreement. Update the document and its pinned expectation when a
+legitimate change adds or removes a count mention.
 
 ## Contributing
 

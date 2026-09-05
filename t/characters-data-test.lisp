@@ -1,11 +1,3 @@
-;;;; t/characters-data-test.lisp
-;;;;
-;;;; src/characters-data.lisp is DATA only (see its own header comment), so
-;;;; unlike every other src/ file it has no LOGIC of its own to exercise;
-;;;; this file instead pins down that every character it defines actually
-;;;; made it into the registry under its own name, so a typo in a
-;;;; DEFCHARACTER name silently shrinking LIST-CHARACTERS by one would fail
-;;;; a test instead of going unnoticed.
 
 (in-package #:cl-cowsay/test)
 

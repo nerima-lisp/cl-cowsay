@@ -1,11 +1,4 @@
-;;;; cl-cowsay.asd
 
-;;; This form comes FIRST, before any defsystem. ASDF binds *package* to
-;;; ASDF-USER only for a file it loads itself; read any other way -- a REPL
-;;; `load`, an editor evaluating the buffer, flake.nix parsing :version -- the
-;;; file is read in whatever package happens to be current. Saying it makes
-;;; the file self-contained. Package definitions belong in src/package.lisp,
-;;; not here.
 (in-package #:asdf-user)
 
 (defsystem "cl-cowsay"
@@ -44,8 +37,6 @@ ${thoughts} substitution scheme."
    (:file "render"))
   :in-order-to ((test-op (test-op "cl-cowsay/test"))))
 
-;;; The test system is `cl-cowsay/test` (singular, slash-separated) with
-;;; :pathname "t". It is NOT `cl-cowsay-test` and NOT `cl-cowsay/tests`.
 (defsystem "cl-cowsay/cli"
   :description "Command-line executable for the cl-cowsay rendering library."
   :author "takeokunn <bararararatty@gmail.com>"

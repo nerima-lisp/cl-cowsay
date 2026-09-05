@@ -1,28 +1,5 @@
-;;;; src/template.lisp
-;;;;
-;;;; A deliberately tiny string-substitution scheme -- three fixed
-;;;; placeholders, no nesting, no control flow -- rather than a general
-;;;; templating engine. Every built-in character (src/characters-data.lisp)
-;;;; is a list of plain strings that may contain ${eyes}, ${tongue}, and/or
-;;;; ${thoughts}; FILL-TEMPLATE-LINE replaces each with caller-supplied text.
-;;;;
-;;;; These definitions land in CL-COWSAY because cl-cowsay.asd's
-;;;; :AROUND-COMPILE thunk binds *PACKAGE* around every compile, not because
-;;;; of an IN-PACKAGE form here -- every file the 100% coverage gate measures
-;;;; omits that form, and src/macros.lisp records the other half of the
-;;;; convention.
-
 (defun %replace-all (string old new)
-  "Return STRING with every non-overlapping occurrence of OLD replaced by NEW.
-OLD must be non-empty; an empty OLD would match at every position and never
-advance, looping forever, so this returns STRING unchanged instead.
-
-Written in continuation-passing style: %SCAN-CPS walks STRING left to right,
-and at each match builds a continuation for \"how to finish the result once
-the tail after this match is known\" instead of writing into a shared
-accumulator. The base case (no further match) hands the remaining tail to
-that whole chain of closures, which then composes the final string outward
-from the last match to the first."
+  "Replace every non-overlapping occurrence of OLD in STRING with NEW."
   (if (zerop (length old))
       string
       (labels ((%scan-cps (start k)
@@ -39,8 +16,7 @@ from the last match to the first."
 
 (defun fill-template-line (line &key eyes tongue thoughts)
   "Return LINE with ${eyes}, ${tongue}, and ${thoughts} replaced by EYES,
-TONGUE, and THOUGHTS respectively. A placeholder LINE does not contain is
-simply absent from the result; this never signals on a missing placeholder."
+TONGUE, and THOUGHTS respectively. Missing placeholders become empty strings."
   (let ((eyes (or eyes ""))
         (tongue (or tongue ""))
         (thoughts (or thoughts "")))
@@ -51,11 +27,7 @@ simply absent from the result; this never signals on a missing placeholder."
      "${tongue}" tongue)))
 
 (defun %compile-template-line (line)
-  "Compile LINE into a list of literal strings and placeholder keywords
-(:THOUGHTS, :EYES, :TONGUE), in order. %WRITE-COMPILED-TEMPLATE-LINE replays
-this plan against a stream without rescanning LINE for ${...} tokens on
-every WRITE-SAY call -- REGISTER-CHARACTER (src/characters.lisp) compiles each
-built-in character's lines once, at registration time."
+  "Compile LINE into literal strings and placeholder keywords."
   (loop with chunks = nil
         with start = 0
         with index = 0

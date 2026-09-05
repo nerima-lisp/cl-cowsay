@@ -1,26 +1,5 @@
-;;;; src/render.lisp
-;;;;
-;;;; WRITE-SAY wraps the message, then writes the bubble and filled character
-;;;; template directly to its result stream.
-;;;;
-;;;; These definitions land in CL-COWSAY because cl-cowsay.asd's
-;;;; :AROUND-COMPILE thunk binds *PACKAGE* around every compile, not because
-;;;; of an IN-PACKAGE form here -- every file the 100% coverage gate measures
-;;;; omits that form, and src/macros.lisp records the other half of the
-;;;; convention.
-
 (defun %split-on-newlines (message)
-  "Split MESSAGE into a list of lines on #\\Newline, with no width-based
-wrapping applied. Used by WRITE-SAY when NO-WRAP is true, so embedded newlines
-still break the bubble into multiple lines while nothing else does.
-
-Written in continuation-passing style, mirroring %REPLACE-ALL
-(src/template.lisp): %SCAN-CPS walks MESSAGE left to right, and at each
-newline builds a continuation for \"how to finish the list once the lines
-after this one are known\" instead of collecting into a shared accumulator.
-The base case (no further newline) hands the final segment to that whole
-chain of closures, which then conses the result together outward from the
-last line to the first."
+  "Split MESSAGE into lines at #\\Newline without wrapping."
   (labels ((%scan-cps (start k)
              (let ((newline (position #\Newline message :start start)))
                (if newline
@@ -70,10 +49,6 @@ TIMEOUT-SECONDS must be a positive real number."
              (eyes (or eyes "oo"))
              (tongue (or tongue ""))
              (thoughts (string (%bubble-thoughts-character mode)))
-             ;; A staged (multi-pass FILL-TEMPLATE-LINE) substitution is only
-             ;; needed when EYES/TONGUE/THOUGHTS themselves contain another
-             ;; placeholder's literal text -- the ordinary case writes each
-             ;; character template line's precompiled CHUNKS straight through.
              (staged-substitution-p (or (search "${" eyes)
                                          (search "${" tongue)
                                          (search "${" thoughts))))
